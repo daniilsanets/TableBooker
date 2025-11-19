@@ -164,11 +164,13 @@ bool DatabaseManager::registerUser(const UserData &data)
     return true;
 }
 
-UserData DatabaseManager::authenticateUser(const QString &phone, const QString &password)
+UserData DatabaseManager::authenticateUser(const QString &identifier, const QString &password)
 {
     QSqlQuery query;
-    query.prepare("SELECT id, username, email, phone, nickname, password_hash, role FROM users WHERE phone = :phone");
-    query.bindValue(":phone", phone);
+    // Ищем введенный identifier сразу в трех столбцах: phone, email или username
+    query.prepare("SELECT id, username, email, phone, nickname, password_hash, role "
+                  "FROM users WHERE phone = :id OR email = :id OR username = :id");
+    query.bindValue(":id", identifier);
 
     if (!query.exec() || !query.next()) {
         return UserData();
@@ -299,6 +301,24 @@ QList<TableData> DatabaseManager::getTablesForPremises(int premisesId)
 
 bool DatabaseManager::createBooking(const BookingData &booking)
 {
+    QSqlQuery checkQuery;
+    checkQuery.prepare("SELECT COUNT(*) FROM bookings WHERE table_id = :tid AND "
+                       "started_at < :newEnd AND ended_at > :newStart");
+
+    checkQuery.bindValue(":tid", booking.tableId);
+    checkQuery.bindValue(":newStart", booking.startTime);
+    checkQuery.bindValue(":newEnd", booking.endTime);
+
+    if (!checkQuery.exec()) {
+        qDebug() << "Check booking error:" << checkQuery.lastError().text();
+        return false;
+    }
+
+    if (checkQuery.next() && checkQuery.value(0).toInt() > 0) {
+        qDebug() << "Booking failed: Time slot is already taken!";
+        return false;
+    }
+
     QSqlQuery query;
     query.prepare("INSERT INTO bookings (table_id, user_id, started_at, ended_at) VALUES (:tid, :uid, :start, :end)");
     query.bindValue(":tid", booking.tableId);

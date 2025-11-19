@@ -17,8 +17,8 @@ Page {
         anchors.horizontalCenter: parent.horizontalCenter
 
         TextField {
-            id: phoneField
-            placeholderText: qsTr("Введите телефон")
+            id: loginField
+            placeholderText: qsTr("Телефон, Email или Логин")
             Layout.fillWidth: true
         }
 
@@ -35,7 +35,7 @@ Page {
             highlighted: true
 
             onClicked: {
-                var user = BackendApi.authenticateUser(phoneField.text, passwordField.text)
+                var user = BackendApi.authenticateUser(loginField.text, passwordField.text)
 
                 if (user.id) {
                     console.log("Успех! Роль: " + user.role)

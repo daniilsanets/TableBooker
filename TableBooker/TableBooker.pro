@@ -31,4 +31,6 @@ DISTFILES += \
     ui/admin/AdminDashboardPage.qml \
     ui/admin/EditableTableItem.qml \
     ui/admin/HallEditorPage.qml \
+    ui/user/BookingHallPage.qml \
+    ui/user/BookingPopup.qml \
     ui/user/UserPremisesListPage.qml
