@@ -2,6 +2,8 @@ import QtQuick 2.15
 import QtQuick.Controls
 import QtQuick.Layouts
 import com.tablebooker.api 1.0
+import "admin"
+import "user"
 
 Page {
     id: loginPage
@@ -26,18 +28,38 @@ Page {
             echoMode: TextInput.Password
         }
 
-        Button {
+        Button
+        {
             text: "Войти"
+            Layout.fillWidth: true
+            highlighted: true
 
             onClicked: {
                 var user = BackendApi.authenticateUser(phoneField.text, passwordField.text)
 
                 if (user.id) {
-                    console.log("Успех! ID пользователя: " + user.id)
+                    console.log("Успех! Роль: " + user.role)
+
+                    if (user.role == "admin"){
+                        loginPage.StackView.view.push("admin/AdminDashboardPage.qml")
+                    } else {
+                        loginPage.StackView.view.push("user/UserPremisesListPage.qml")
+                    }
+
                 } else {
                     console.log("Ошибка: Неверный логин или пароль")
+                    // Тут можно добавить Dialog с ошибкой
                 }
             }
+        }
+
+        Button
+        {
+            text: "Нет аккаунта? Зарегистрироваться"
+            flat: true
+            Layout.fillWidth: true
+
+            onClicked: loginPage.StackView.view.push("RegistrationScreen.qml")
         }
     }
 }

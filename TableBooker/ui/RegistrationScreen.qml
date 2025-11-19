@@ -4,7 +4,7 @@ import QtQuick.Layouts
 import com.tablebooker.api 1.0
 
 Page {
-    id: registrationpPage
+    id: registrationPage
     title: "Регистрация в TableBooker"
 
     ColumnLayout {
@@ -44,7 +44,8 @@ Page {
             echoMode: TextInput.Password
         }
 
-        Button {
+        Button
+        {
             text: "Зарегистрироваться"
 
             onClicked: {
@@ -62,10 +63,20 @@ Page {
 
                 if (isSuccess) {
                     console.log("Регистрация успешна! Теперь можно войти.")
+
+                    registrationPage.StackView.view.pop()
                 } else {
                     console.log("Ошибка регистрации (возможно, логин занят)")
                 }
             }
+        }
+
+        Button
+        {
+            text: "Отмена"
+            flat: true
+            Layout.fillWidth: true
+            onClicked: registrationPage.StackView.view.pop()
         }
     }
 }

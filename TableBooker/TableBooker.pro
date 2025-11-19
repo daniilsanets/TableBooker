@@ -26,4 +26,6 @@ HEADERS += \
 
 DISTFILES += \
     ui/LoginScreen.qml \
-    ui/RegistrationScreen.qml
+    ui/RegistrationScreen.qml \
+    ui/admin/AdminDashboardPage.qml \
+    ui/user/UserPremisesListPage.qml

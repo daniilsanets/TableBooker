@@ -113,6 +113,36 @@ void DatabaseManager::createTables()
 
 bool DatabaseManager::registerUser(const UserData &data)
 {
+    QSqlQuery checkQuery;
+    checkQuery.prepare("SELECT username, email, phone FROM users "
+                       "WHERE username = :u OR email = :e OR phone = :p");
+    checkQuery.bindValue(":u", data.username);
+    checkQuery.bindValue(":e", data.email);
+    checkQuery.bindValue(":p", data.phone);
+
+    if (checkQuery.exec()) {
+        if (checkQuery.next()) {
+            QString existingUser = checkQuery.value("username").toString();
+            QString existingEmail = checkQuery.value("email").toString();
+            QString existingPhone = checkQuery.value("phone").toString();
+
+            if (existingUser == data.username) {
+                qDebug() << "Registration failed: Username" << data.username << "is already taken.";
+            }
+            if (existingEmail == data.email) {
+                qDebug() << "Registration failed: Email" << data.email << "is already registered.";
+            }
+            if (existingPhone == data.phone) {
+                qDebug() << "Registration failed: Phone" << data.phone << "is already used.";
+            }
+
+            return false;
+        }
+    } else {
+        qDebug() << "Check duplicate error:" << checkQuery.lastError().text();
+        return false;
+    }
+
     QSqlQuery query;
     QString passwordHash = QString(QCryptographicHash::hash(
                                        data.passwordHash.toUtf8(), QCryptographicHash::Sha256).toHex());
@@ -125,7 +155,7 @@ bool DatabaseManager::registerUser(const UserData &data)
     query.bindValue(":phone", data.phone);
     query.bindValue(":nickname", data.nickname);
     query.bindValue(":pass", passwordHash);
-    query.bindValue(":role", data.role);
+    query.bindValue(":role", data.role.isEmpty() ? "user" : data.role);
 
     if (!query.exec()) {
         qDebug() << "Register error:" << query.lastError().text();

@@ -3,5 +3,8 @@
         <file>main.qml</file>
         <file>ui/LoginScreen.qml</file>
         <file>ui/RegistrationScreen.qml</file>
+
+        <file>ui/admin/AdminDashboardPage.qml</file>
+        <file>ui/user/UserPremisesListPage.qml</file>
     </qresource>
 </RCC>
