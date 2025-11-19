@@ -25,7 +25,10 @@ HEADERS += \
     models/AppModels.h
 
 DISTFILES += \
+    main.qml \
     ui/LoginScreen.qml \
     ui/RegistrationScreen.qml \
     ui/admin/AdminDashboardPage.qml \
+    ui/admin/EditableTableItem.qml \
+    ui/admin/HallEditorPage.qml \
     ui/user/UserPremisesListPage.qml
