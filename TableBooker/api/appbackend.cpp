@@ -1,0 +1,164 @@
+#include "appbackend.h"
+
+AppBackend &AppBackend::instance()
+{
+    static AppBackend instance;
+    return instance;
+}
+
+AppBackend::AppBackend(QObject *parent) : QObject(parent)
+{
+    // При старте можно проверить, есть ли сохраненная сессия (пока пропустим)
+}
+
+// --- Пользователи ---
+
+bool AppBackend::registerUser(const QVariantMap &data)
+{
+    UserData user;
+    // 1. Распаковываем данные из QML (JSON) в C++ структуру
+    user.username = data["username"].toString();
+    user.passwordHash = data["password"].toString(); // Тут пока сырой пароль, хешируем в DatabaseManager
+    user.email = data["email"].toString();
+    user.phone = data["phone"].toString();
+    user.nickname = data["nickname"].toString();
+    user.role = "user"; // По умолчанию регистрируем обычных юзеров
+
+    // 2. Вызываем базу
+    return DatabaseManager::instance()->registerUser(user);
+}
+
+QVariantMap AppBackend::authenticateUser(const QString &phone, const QString &password)
+{
+    UserData user = DatabaseManager::instance()->authenticateUser(phone, password);
+
+    if (user.isValid()) {
+        // Запоминаем состояние внутри приложения
+        m_isLoggedIn = true;
+        m_currentUserId = user.id;
+        m_currentUserRole = user.role;
+
+        // Уведомляем QML, что свойства изменились
+        emit loginStatusChanged();
+
+        // Возвращаем данные юзера обратно в QML
+        QVariantMap map;
+        map["id"] = user.id;
+        map["username"] = user.username;
+        map["role"] = user.role;
+        map["nickname"] = user.nickname;
+        return map;
+    }
+
+    return QVariantMap(); // Пустой объект, если вход не удался
+}
+
+// --- Помещения ---
+
+QVariantList AppBackend::getPremisesForAdmin(int adminId)
+{
+    // Получаем C++ список
+    QList<PremisesData> list = DatabaseManager::instance()->getPremisesForAdmin(adminId);
+    QVariantList result;
+
+    // Перекладываем в QVariantList для QML
+    for (const PremisesData &p : list) {
+        QVariantMap map;
+        map["id"] = p.id;
+        map["name"] = p.name;
+        map["bgImagePath"] = p.bgImagePath;
+        result.append(map);
+    }
+    return result;
+}
+
+QVariantList AppBackend::getAllPremises()
+{
+    QList<PremisesData> list = DatabaseManager::instance()->getAllPremises();
+    QVariantList result;
+    for (const PremisesData &p : list) {
+        QVariantMap map;
+        map["id"] = p.id;
+        map["name"] = p.name;
+        map["bgImagePath"] = p.bgImagePath;
+        result.append(map);
+    }
+    return result;
+}
+
+bool AppBackend::createPremises(const QVariantMap &data)
+{
+    PremisesData p;
+    p.adminId = m_currentUserId; // Берем ID текущего админа
+    p.name = data["name"].toString();
+    p.bgImagePath = data["bgImagePath"].toString();
+    return DatabaseManager::instance()->createPremises(p);
+}
+
+// --- Столы ---
+
+QVariantList AppBackend::getTablesForPremises(int premisesId)
+{
+    QList<TableData> list = DatabaseManager::instance()->getTablesForPremises(premisesId);
+    QVariantList result;
+    for (const TableData &t : list) {
+        QVariantMap map;
+        map["id"] = t.id;
+        map["name"] = t.name;
+        map["x"] = t.x;
+        map["y"] = t.y;
+        map["width"] = t.width;
+        map["height"] = t.height;
+        map["shapeType"] = t.shapeType;
+        result.append(map);
+    }
+    return result;
+}
+
+bool AppBackend::saveTableLayout(int premisesId, const QVariantList &tables)
+{
+    QList<TableData> list;
+
+    // Нам пришел список объектов из JS. Нужно превратить каждый в TableData.
+    for (const QVariant &v : tables) {
+        QVariantMap map = v.toMap();
+        TableData t;
+        t.name = map["name"].toString();
+        t.x = map["x"].toInt();
+        t.y = map["y"].toInt();
+        t.width = map["width"].toInt();
+        t.height = map["height"].toInt();
+        t.shapeType = map["shapeType"].toString();
+        list.append(t);
+    }
+
+    return DatabaseManager::instance()->saveTableLayout(premisesId, list);
+}
+
+// --- Бронирования ---
+
+QVariantList AppBackend::getBookingsForTable(int tableId, const QDate &date)
+{
+    QList<BookingData> list = DatabaseManager::instance()->getBookingsForTable(tableId, date);
+    QVariantList result;
+    for (const BookingData &b : list) {
+        QVariantMap map;
+        map["id"] = b.id;
+        map["userId"] = b.userId;
+        map["startTime"] = b.startTime;
+        map["endTime"] = b.endTime;
+        result.append(map);
+    }
+    return result;
+}
+
+bool AppBackend::createBooking(const QVariantMap &booking)
+{
+    BookingData b;
+    b.tableId = booking["tableId"].toInt();
+    b.userId = m_currentUserId; // Бронирует текущий юзер
+    b.startTime = booking["startTime"].toString();
+    b.endTime = booking["endTime"].toString();
+
+    return DatabaseManager::instance()->createBooking(b);
+}

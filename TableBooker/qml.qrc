@@ -1,0 +1,7 @@
+<RCC>
+    <qresource prefix="/TableBooker">
+        <file>main.qml</file>
+        <file>ui/LoginScreen.qml</file>
+        <file>ui/RegistrationScreen.qml</file>
+    </qresource>
+</RCC>
