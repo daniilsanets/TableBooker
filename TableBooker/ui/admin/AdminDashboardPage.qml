@@ -135,6 +135,13 @@ Page {
             onClicked: createDialog.open()
         }
 
+        Button
+        {
+            text: "Перейти к бронированию"
+            Layout.fillWidth: true
+            onClicked: adminDashboard.StackView.view.push("../user/UserPremisesListPage.qml")
+        }
+
         Button {
             text: "Выйти"
             Layout.fillWidth: true
