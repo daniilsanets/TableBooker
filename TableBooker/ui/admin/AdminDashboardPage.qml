@@ -18,6 +18,30 @@ Page {
 
     Component.onCompleted: refreshData()
 
+    header:
+        ToolBar
+    {
+        RowLayout { // Use RowLayout for better spacing
+            anchors.fill: parent
+            anchors.leftMargin: 10
+            anchors.rightMargin: 10
+
+            Label {
+                text: "Админ-панель"
+                font.bold: true
+                Layout.fillWidth: true
+            }
+
+            ToolButton {
+                text: "?"
+                font.bold: true
+                onClicked: {
+                adminDashboard.StackView.view.push("../AboutPage.qml")
+                }
+            }
+        }
+    }
+
     Dialog
     {
         id: createDialog

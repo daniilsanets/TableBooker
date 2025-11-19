@@ -10,5 +10,6 @@
         <file>ui/user/UserPremisesListPage.qml</file>
         <file>ui/user/BookingHallPage.qml</file>
         <file>ui/user/BookingPopup.qml</file>
+        <file>ui/AboutPage.qml</file>
     </qresource>
 </RCC>

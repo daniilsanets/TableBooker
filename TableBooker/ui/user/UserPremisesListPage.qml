@@ -17,6 +17,31 @@ Page {
 
     Component.onCompleted: loadData()
 
+    header:
+        ToolBar
+        {
+            RowLayout {
+                anchors.fill: parent
+                anchors.leftMargin: 10
+                anchors.rightMargin: 10
+
+                Label {
+                    text: userPremisesPage.title
+                    font.bold: true
+                    Layout.fillWidth: true
+                }
+
+                ToolButton {
+                    text: "?"
+                    font.bold: true
+                    onClicked: {
+                         // Go up one folder (..) to find AboutPage
+                        userPremisesPage.StackView.view.push("../AboutPage.qml")
+                    }
+                }
+            }
+        }
+
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: 10

@@ -26,6 +26,7 @@ HEADERS += \
 
 DISTFILES += \
     main.qml \
+    ui/AboutPage.qml \
     ui/LoginScreen.qml \
     ui/RegistrationScreen.qml \
     ui/admin/AdminDashboardPage.qml \
