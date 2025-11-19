@@ -22,10 +22,40 @@ Page {
             Layout.fillWidth: true
         }
 
-        TextField {
+        TextField
+        {
             id: passwordField
             placeholderText: qsTr("Введите пароль")
-            echoMode: TextInput.Password
+            echoMode: showPassArea.checked ? TextInput.Normal : TextInput.Password
+            Layout.fillWidth: true
+
+            // Отступ справа, чтобы текст пароля не налез на кнопку
+            rightPadding: 50
+
+            Text
+            {
+                id: eyeIcon
+                text: showPassArea.checked ? "🙈" : "👁️"
+
+                anchors.right: parent.right
+                anchors.verticalCenter: parent.verticalCenter
+                anchors.rightMargin: 10
+
+                font.pixelSize: 14
+                color: "gray"
+                // Чтобы текст был всегда поверх поля
+                z: 1
+            }
+
+            MouseArea
+            {
+                id: showPassArea
+                anchors.fill: eyeIcon
+                anchors.margins: -10
+
+                property bool checked: false
+                onClicked: checked = !checked
+            }
         }
 
         Button
