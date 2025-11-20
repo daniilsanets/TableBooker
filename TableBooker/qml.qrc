@@ -11,5 +11,7 @@
         <file>ui/user/BookingHallPage.qml</file>
         <file>ui/user/BookingPopup.qml</file>
         <file>ui/AboutPage.qml</file>
+        <file>ui/components/TableWidget.qml</file>
+        <file>ui/components/ZoomableHall.qml</file>
     </qresource>
 </RCC>

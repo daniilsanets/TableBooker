@@ -1,5 +1,5 @@
 QT += quick core gui qml sql quickcontrols2
-
+QT += core5compat
 SOURCES += \
         api/appbackend.cpp \
         database/databasemanager.cpp \
@@ -32,6 +32,8 @@ DISTFILES += \
     ui/admin/AdminDashboardPage.qml \
     ui/admin/EditableTableItem.qml \
     ui/admin/HallEditorPage.qml \
+    ui/components/TableWidget.qml \
+    ui/components/ZoomableHall.qml \
     ui/user/BookingHallPage.qml \
     ui/user/BookingPopup.qml \
     ui/user/UserPremisesListPage.qml

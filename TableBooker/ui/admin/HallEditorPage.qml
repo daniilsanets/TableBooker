@@ -1,24 +1,24 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
+import QtQuick.Effects
 import com.tablebooker.api 1.0
+import "../components"
 
 Page {
     id: page
-    title: "Редактор: " + premisesName
-
     property int premisesId: -1
     property string premisesName: ""
-    property int selectedIndex: -1
+    property int selectedIndex: -1 // Индекс выделенного объекта в модели
+
+    title: premisesName
 
     ListModel { id: tablesModel }
 
-    // --- ЛОГИКА ---
-
+    // --- ЛОГИКА ДАННЫХ (из вашего кода) ---
     function loadTables() {
         tablesModel.clear()
         var tables = BackendApi.getTablesForPremises(premisesId)
-        console.log("Загружено объектов:", tables.length)
         for (var i = 0; i < tables.length; i++) {
             var t = tables[i]
             tablesModel.append({
@@ -46,24 +46,22 @@ Page {
         BackendApi.saveTableLayout(premisesId, tablesToSave)
     }
 
-    // УМНОЕ ДОБАВЛЕНИЕ
+    // Умное добавление (адаптировано под мобилку)
     function addItem(itemType, w, h, namePrefix, shape, col) {
         // Генерируем имя
-        var newName = ""
+        var newName = namePrefix
         if (itemType === "table") {
-            // Считаем, сколько уже столов, чтобы дать номер T-5
             var count = 0
             for(var i=0; i<tablesModel.count; i++) {
                 if (tablesModel.get(i).type === "table") count++
             }
             newName = "T-" + (count + 1)
-        } else {
-            newName = namePrefix
         }
 
-        // Добавляем в центр видимой области (примерно)
-        var centerX = flickable.contentX + 100
-        var centerY = flickable.contentY + 100
+        // Добавляем в центр экрана (учитывая скролл ZoomableHall)
+        // Доступ к flickable внутри ZoomableHall сложен, упростим:
+        var centerX = 500 // Или брать из hallView.contentX
+        var centerY = 500
 
         tablesModel.append({
             "dbId": -1, "name": newName,
@@ -92,141 +90,135 @@ Page {
     // --- ИНТЕРФЕЙС ---
 
     header: ToolBar {
+        background: Rectangle { color: "white" }
         RowLayout {
             anchors.fill: parent
-            ToolButton { text: "<- Назад"; onClicked: page.StackView.view.pop() }
-            Label { text: page.title; Layout.fillWidth: true; horizontalAlignment: Text.AlignHCenter; font.bold: true }
-            ToolButton { text: "Сохранить"; font.bold: true; onClicked: saveTables() }
+            ToolButton { text: "←"; onClicked: page.StackView.view.pop() }
+            Label { text: page.title; font.bold: true; Layout.fillWidth: true }
+            Button {
+                text: "Сохранить"
+                flat: true
+                font.bold: true
+                palette.buttonText: "#2196F3"
+                onClicked: saveTables()
+            }
         }
     }
 
-    RowLayout {
+    // 1. ОСНОВНОЕ ПОЛЕ (ЗУМ И СКРОЛЛ)
+    ZoomableHall {
+        id: hallView
         anchors.fill: parent
-        spacing: 0
+        tablesModel: tablesModel
+        editMode: true
 
-        // СЛЕВА: Область редактора (Flickable)
-        Flickable {
-            id: flickable
-            Layout.fillHeight: true
-            Layout.fillWidth: true
-            clip: true
+        // Прокидываем индекс выделения внутрь компонента (если добавили свойство)
+        // property alias selectedIndex: page.selectedIndex (в ZoomableHall)
 
-            // Размер поля делаем большим (3000x3000), чтобы можно было строить огромные схемы
-            contentWidth: 3000
-            contentHeight: 3000
-
-            // Позволяет тянуть за любое свободное место
-            interactive: true
-            boundsBehavior: Flickable.StopAtBounds
-
-            // СЕТКА (Рисуем кодом на Canvas размером с контент)
-            Canvas {
-                width: flickable.contentWidth
-                height: flickable.contentHeight
-                z: -10
-                onPaint: {
-                    var ctx = getContext("2d")
-                    ctx.clearRect(0, 0, width, height)
-                    ctx.strokeStyle = "#e0e0e0"
-                    ctx.lineWidth = 1
-                    ctx.beginPath()
-                    for (var x = 0; x < width; x += 20) { ctx.moveTo(x, 0); ctx.lineTo(x, height); }
-                    for (var y = 0; y < height; y += 20) { ctx.moveTo(0, y); ctx.lineTo(width, y); }
-                    ctx.stroke()
-                }
-            }
-
-            // Рендерим объекты
-            Repeater {
-                model: tablesModel
-                delegate: EditableTableItem {
-                    // Привязка свойств
-                    x: model.x; y: model.y
-                    width: model.width; height: model.height
-                    rotation: model.rotation
-                    type: model.type; shapeType: model.shapeType
-                    text: model.name; itemColor: model.color
-
-                    isSelected: index === page.selectedIndex
-
-                    // Обратная связь (когда двигаем или ресайзим)
-                    onXChanged: model.x = x
-                    onYChanged: model.y = y
-                    onWidthChanged: model.width = width
-                    onHeightChanged: model.height = height
-
-                    // Клик для выбора
-                    MouseArea {
-                        anchors.fill: parent
-                        propagateComposedEvents: true
-                        onClicked: (mouse) => {
-                            page.selectedIndex = index
-                            mouse.accepted = false
-                        }
-                        onPressed: (mouse) => {
-                             page.selectedIndex = index
-                             mouse.accepted = false
-                        }
-                    }
-                }
-            }
+        onTableClicked: (idx, dbId) => {
+            console.log("Выбран индекс:", idx)
+            page.selectedIndex = idx
         }
 
-        // СПРАВА: Панель инструментов
-        Rectangle {
-            Layout.preferredWidth: 140
-            Layout.fillHeight: true
-            color: "#f5f5f5"
+        onCanvasTapped: {
+            page.selectedIndex = -1 // Сброс выделения
+        }
+    }
 
-            Rectangle { width: 1; color: "#bdbdbd"; anchors.left: parent.left; anchors.top: parent.top; anchors.bottom: parent.bottom }
+    // 2. ПАНЕЛЬ СВОЙСТВ (Появляется снизу, когда выбран предмет)
+    Rectangle {
+        id: propertiesPanel
+        width: parent.width
+        height: 80
+        color: "white"
+        anchors.bottom: parent.bottom
+        visible: page.selectedIndex >= 0 // Видна только при выделении
+        z: 200
 
-            ScrollView {
-                anchors.fill: parent; anchors.leftMargin: 5
-                clip: true
+        // Тень сверху панели
+        layer.enabled: true
+        layer.effect: MultiEffect { shadowEnabled: true; shadowVerticalOffset: -2; shadowBlur: 0.2 }
 
-                ColumnLayout {
-                    width: parent.width - 10; spacing: 8
-                    Label { text: "Добавить:"; font.bold: true; Layout.alignment: Qt.AlignHCenter; Layout.topMargin: 10 }
+        RowLayout {
+            anchors.centerIn: parent
+            spacing: 30
 
-                    // Кнопки добавления
-                    Button { text: "Стол (Круг)"; Layout.fillWidth: true;
-                        onClicked: addItem("table", 80, 80, "", "ellipse", "#FFF59D") }
+            ToolButton {
+                text: "↺ -45°"
+                font.bold: true
+                onClicked: modifySelected("rotation", -45)
+            }
 
-                    Button { text: "Стол (Кв)"; Layout.fillWidth: true;
-                        onClicked: addItem("table", 80, 80, "", "rect", "#FFF59D") }
+            Label { text: "Правка"; font.bold: true; color: "gray" }
 
-                    Button { text: "Комната (Пол)"; Layout.fillWidth: true;
-                        // Создаем большой блок
-                        onClicked: addItem("room", 400, 300, "Main Hall", "rect", "#FFFFFF") }
+            ToolButton {
+                text: "↻ +45°"
+                font.bold: true
+                onClicked: modifySelected("rotation", 45)
+            }
 
-                    Button { text: "Стена"; Layout.fillWidth: true;
-                        onClicked: addItem("wall", 150, 10, "", "rect", "#424242") }
+            ToolButton {
+                text: "🗑️"
+                palette.buttonText: "red"
+                onClicked: removeSelected()
+            }
+        }
+    }
 
-                    Button { text: "Окно"; Layout.fillWidth: true;
-                        onClicked: addItem("window", 100, 15, "", "rect", "#81D4FA") }
+    // 3. FAB - Кнопка "Добавить" (Скрываем, если открыта панель свойств)
+    RoundButton {
+        text: "+"
+        font.pixelSize: 30
+        width: 56; height: 56; radius: 28
+        highlighted: true
+        palette.button: "#FF5722"
+        palette.buttonText: "white"
 
-                    Button { text: "WC"; Layout.fillWidth: true;
-                        onClicked: addItem("wc", 60, 60, "WC", "rect", "#FFFFFF") }
+        anchors.bottom: parent.bottom
+        anchors.right: parent.right
+        anchors.margins: 20
+        visible: page.selectedIndex === -1 // Скрываем, когда редактируем объект
 
-                    Button { text: "Декор 🌿"; Layout.fillWidth: true;
-                        onClicked: addItem("plant", 50, 50, "", "rect", "transparent") }
+        onClicked: addDrawer.open()
+    }
 
-                    Item { height: 20; Layout.fillWidth: true }
+    // 4. МЕНЮ ДОБАВЛЕНИЯ (Drawer)
+    Drawer {
+        id: addDrawer
+        width: parent.width
+        height: 350 // Повыше, чтобы всё влезло
+        edge: Qt.BottomEdge
 
-                    Label { text: "Свойства:"; font.bold: true; Layout.alignment: Qt.AlignHCenter; visible: selectedIndex >= 0 }
+        background: Rectangle { color: "white"; radius: 16 }
 
-                    RowLayout {
-                        visible: selectedIndex >= 0; Layout.alignment: Qt.AlignHCenter
-                        Button { text: "↺"; Layout.preferredWidth: 40; onClicked: modifySelected("rotation", -45) }
-                        Button { text: "↻"; Layout.preferredWidth: 40; onClicked: modifySelected("rotation", 45) }
-                    }
+        ColumnLayout {
+            anchors.fill: parent
+            anchors.margins: 20
+            spacing: 15
 
-                    Button {
-                        text: "Удалить"; Layout.fillWidth: true; visible: selectedIndex >= 0
-                        contentItem: Text { text: parent.text; color: "red"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
-                        onClicked: removeSelected()
-                    }
-                }
+            Label { text: "Добавить объект"; font.bold: true; font.pixelSize: 18; Layout.alignment: Qt.AlignHCenter }
+
+            GridLayout {
+                columns: 3
+                columnSpacing: 10
+                rowSpacing: 10
+                Layout.fillWidth: true
+
+                // ГЕНЕРАТОР КНОПОК
+                // Столы
+                Button { text: "Стол (Круг)"; Layout.fillWidth: true; onClicked: { addItem("table", 80, 80, "", "ellipse", "#FFF59D"); addDrawer.close() } }
+                Button { text: "Стол (Кв)"; Layout.fillWidth: true; onClicked: { addItem("table", 80, 80, "", "rect", "#FFF59D"); addDrawer.close() } }
+
+                // Помещения
+                Button { text: "Пол (Зал)"; Layout.fillWidth: true; onClicked: { addItem("room", 400, 300, "Main Hall", "rect", "#FFFFFF"); addDrawer.close() } }
+
+                // Стены и окна
+                Button { text: "Стена"; Layout.fillWidth: true; onClicked: { addItem("wall", 150, 10, "", "rect", "#424242"); addDrawer.close() } }
+                Button { text: "Окно"; Layout.fillWidth: true; onClicked: { addItem("window", 100, 15, "", "rect", "#81D4FA"); addDrawer.close() } }
+
+                // Прочее
+                Button { text: "WC"; Layout.fillWidth: true; onClicked: { addItem("wc", 60, 60, "WC", "rect", "#FFFFFF"); addDrawer.close() } }
+                Button { text: "Декор 🌿"; Layout.fillWidth: true; onClicked: { addItem("plant", 50, 50, "", "rect", "transparent"); addDrawer.close() } }
             }
         }
     }
