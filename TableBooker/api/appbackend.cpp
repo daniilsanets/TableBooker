@@ -110,6 +110,9 @@ QVariantList AppBackend::getTablesForPremises(int premisesId)
         map["width"] = t.width;
         map["height"] = t.height;
         map["shapeType"] = t.shapeType;
+        map["type"] = t.type;
+        map["rotation"] = t.rotation;
+        map["color"] = t.color;
         result.append(map);
     }
     return result;
@@ -119,16 +122,21 @@ bool AppBackend::saveTableLayout(int premisesId, const QVariantList &tables)
 {
     QList<TableData> list;
 
-    // Нам пришел список объектов из JS. Нужно превратить каждый в TableData.
     for (const QVariant &v : tables) {
         QVariantMap map = v.toMap();
         TableData t;
+        t.id = map.contains("id") ? map["id"].toInt() : -1;
+
         t.name = map["name"].toString();
         t.x = map["x"].toInt();
         t.y = map["y"].toInt();
         t.width = map["width"].toInt();
         t.height = map["height"].toInt();
         t.shapeType = map["shapeType"].toString();
+        t.type = map["type"].toString();
+        t.rotation = map["rotation"].toInt();
+        t.color = map["color"].toString();
+
         list.append(t);
     }
 

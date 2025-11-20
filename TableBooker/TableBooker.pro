@@ -1,4 +1,4 @@
-QT += quick core gui qml sql
+QT += quick core gui qml sql quickcontrols2
 
 SOURCES += \
         api/appbackend.cpp \

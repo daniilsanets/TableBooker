@@ -83,12 +83,15 @@ void DatabaseManager::createTables()
         CREATE TABLE IF NOT EXISTS tables (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             premises_id INTEGER NOT NULL,
-            name TEXT NOT NULL,
-            pos_x INTEGER NOT NULL,
-            pos_y INTEGER NOT NULL,
-            shape_type TEXT NOT NULL CHECK(shape_type IN ('rect', 'ellipse')),
-            width INTEGER NOT NULL CHECK(width > 0),
-            height INTEGER NOT NULL CHECK(height > 0),
+            name TEXT,
+            pos_x INTEGER DEFAULT 0,
+            pos_y INTEGER DEFAULT 0,
+            width INTEGER DEFAULT 80,
+            height INTEGER DEFAULT 80,
+            rotation INTEGER DEFAULT 0,
+            item_type TEXT DEFAULT 'table',
+            shape_type TEXT DEFAULT 'rect',
+            color TEXT DEFAULT '#CCCCCC',
             FOREIGN KEY(premises_id) REFERENCES premises(id)
         );
     )";
@@ -257,17 +260,20 @@ bool DatabaseManager::saveTableLayout(int premisesId, const QList<TableData> &ta
         return false;
     }
 
-    query.prepare("INSERT INTO tables (premises_id, name, pos_x, pos_y, shape_type, width, height) "
-                  "VALUES (:premId, :name, :x, :y, :shape, :w, :h)");
+    query.prepare("INSERT INTO tables (premises_id, name, pos_x, pos_y, width, height, rotation, item_type, shape_type, color) "
+                  "VALUES (:premId, :name, :x, :y, :w, :h, :rot, :type, :shape, :col)");
 
     for (const TableData& table : tables) {
         query.bindValue(":premId", premisesId);
         query.bindValue(":name", table.name);
         query.bindValue(":x", table.x);
         query.bindValue(":y", table.y);
-        query.bindValue(":shape", table.shapeType);
         query.bindValue(":w", table.width);
         query.bindValue(":h", table.height);
+        query.bindValue(":rot", table.rotation);
+        query.bindValue(":type", table.type);
+        query.bindValue(":shape", table.shapeType);
+        query.bindValue(":col", table.color);
         if (!query.exec()) {
             m_db.rollback();
             return false;
@@ -280,7 +286,7 @@ QList<TableData> DatabaseManager::getTablesForPremises(int premisesId)
 {
     QList<TableData> result;
     QSqlQuery query;
-    query.prepare("SELECT id, premises_id, name, pos_x, pos_y, shape_type, width, height FROM tables WHERE premises_id = :id");
+    query.prepare("SELECT * FROM tables WHERE premises_id = :id");
     query.bindValue(":id", premisesId);
     if (query.exec()) {
         while (query.next()) {
@@ -293,6 +299,9 @@ QList<TableData> DatabaseManager::getTablesForPremises(int premisesId)
             t.shapeType = query.value("shape_type").toString();
             t.width = query.value("width").toInt();
             t.height = query.value("height").toInt();
+            t.rotation = query.value("rotation").toInt();
+            t.type = query.value("item_type").toString();
+            t.color = query.value("color").toString();
             result.append(t);
         }
     }

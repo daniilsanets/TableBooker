@@ -30,9 +30,17 @@ struct TableData {
     QString name;
     int x = 0;
     int y = 0;
-    QString shapeType;
-    int width = 100;
-    int height = 100;
+    int width = 80;
+    int height = 80;
+
+    // Новые поля
+    QString type = "table"; // "table", "wall", "window", "wc", "decoration"
+    int rotation = 0;       // Угол поворота в градусах
+    QString color = "#81C784"; // Цвет (можно настраивать)
+
+    // shapeType оставляем для формы столов (rect/ellipse),
+    // но для стен он будет игнорироваться
+    QString shapeType = "rect";
 };
 
 struct BookingData {

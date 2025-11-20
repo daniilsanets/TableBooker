@@ -1,12 +1,15 @@
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
+#include <QQuickStyle>
 #include "database/databasemanager.h"
 #include "api/appbackend.h"
 
 int main(int argc, char *argv[])
 {
-    QGuiApplication app(argc, argv);
 
+    QQuickStyle::setStyle("Basic");
+
+    QGuiApplication app(argc, argv);
     // 1. Инициализируем базу
     DatabaseManager::instance()->initDatabase();
 
