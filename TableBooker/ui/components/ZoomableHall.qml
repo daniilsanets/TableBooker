@@ -1,5 +1,7 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
+import QtQuick.Layouts 1.15
+import "../Theme.js" as Theme
 
 Item {
     id: hallRoot
@@ -169,113 +171,243 @@ Item {
         }
     }
 
-    // Панель управления зумом с слайдером
+    // Кнопка открытия панели зума
     Rectangle {
+        id: zoomToggleButton
         anchors.right: parent.right
         anchors.top: parent.top
         anchors.margins: 12
-        width: 200
-        height: hallRoot.editMode ? 120 : 80
+        width: 48
+        height: 48
+        radius: 24
+        color: zoomPanel.visible ? Theme.primaryDark : Theme.primary
+        z: 1001
+        border.width: 2
+        border.color: "white"
+        
+        Text {
+            text: "🔍"
+            font.pixelSize: 20
+            anchors.centerIn: parent
+        }
+        
+        MouseArea {
+            anchors.fill: parent
+            onClicked: zoomPanel.visible = !zoomPanel.visible
+        }
+        
+        Behavior on color {
+            ColorAnimation { duration: 200 }
+        }
+    }
+    
+    // Панель управления зумом с слайдером - Скрываемая
+    Rectangle {
+        id: zoomPanel
+        anchors.right: parent.right
+        anchors.top: zoomToggleButton.bottom
+        anchors.topMargin: 8
+        anchors.margins: 12
+        width: 240
+        height: hallRoot.editMode ? 140 : 100
         color: Theme.surface
-        radius: Theme.radiusSmall
+        radius: Theme.radiusMedium
         border.width: 1
         border.color: Theme.divider
         z: 1000
+        visible: false
         
-        // Тень
+        opacity: visible ? 1 : 0
+        
+        Behavior on opacity {
+            NumberAnimation { duration: 200 }
+        }
+        
+        Behavior on visible {
+            PropertyAnimation { duration: 200 }
+        }
+        
+        // Профессиональная тень
         Rectangle {
             anchors.fill: parent
-            anchors.margins: -2
+            anchors.margins: -3
             z: -1
-            color: "#20000000"
-            radius: parent.radius + 2
-            opacity: 0.15
+            color: "#30000000"
+            radius: parent.radius + 3
+            opacity: 0.2
+        }
+        Rectangle {
+            anchors.fill: parent
+            anchors.margins: -1
+            z: -1
+            color: "#15000000"
+            radius: parent.radius + 1
+            opacity: 0.1
         }
         
         Column {
             anchors.fill: parent
-            anchors.margins: 8
-            spacing: 8
+            anchors.margins: 12
+            spacing: 10
+            
+            // Заголовок
+            Row {
+                width: parent.width
+                height: 24
+                spacing: 8
+                
+                Text {
+                    text: "🔍"
+                    font.pixelSize: 16
+                    height: parent.height
+                }
+                
+                Text {
+                    text: "Масштаб"
+                    font.pixelSize: Theme.fontSizeSmall
+                    font.bold: true
+                    color: Theme.textPrimary
+                    height: parent.height
+                }
+                
+                Item { 
+                    width: parent.width - 200
+                    height: 1
+                }
+                
+                // Индикатор зума
+                Rectangle {
+                    width: 50
+                    height: 24
+                    radius: 12
+                    color: Theme.primary
+                    
+                    Text {
+                        text: Math.round(flickable.scaleFactor * 100) + "%"
+                        font.pixelSize: Theme.fontSizeSmall
+                        font.bold: true
+                        color: "white"
+                        anchors.centerIn: parent
+                    }
+                }
+            }
             
             // Слайдер зума
             Column {
                 width: parent.width
-                spacing: 4
+                spacing: 6
                 
                 Row {
                     width: parent.width
-                    spacing: 8
+                    height: 40
+                    spacing: 12
                     
-                    Text {
-                        text: "−"
-                        font.pixelSize: 18
-                        font.bold: true
-                        color: Theme.textPrimary
-                        width: 24
-                        horizontalAlignment: Text.AlignHCenter
-                        anchors.verticalCenter: parent.verticalCenter
+                    // Кнопка уменьшения
+                    Rectangle {
+                        width: 32
+                        height: 32
+                        radius: 16
+                        color: zoomOutMouse.pressed ? Theme.primaryDark : Theme.primary
+                        
+                        Text {
+                            text: "−"
+                            font.pixelSize: 20
+                            font.bold: true
+                            color: "white"
+                            anchors.centerIn: parent
+                        }
+                        
+                        MouseArea {
+                            id: zoomOutMouse
+                            anchors.fill: parent
+                            onClicked: {
+                                var newScale = Math.max(0.5, flickable.scaleFactor - 0.1)
+                                flickable.scaleFactor = newScale
+                                zoomSlider.value = newScale
+                            }
+                        }
                     }
                     
+                    // Слайдер
                     Slider {
                         id: zoomSlider
-                        width: parent.width - 60
+                        width: parent.width - 80
+                        height: parent.height
                         from: 0.5
                         to: 2.0
                         value: flickable.scaleFactor
-                        stepSize: 0.1
+                        stepSize: 0.05
                         onValueChanged: {
-                            flickable.scaleFactor = value
+                            if (Math.abs(flickable.scaleFactor - value) > 0.01) {
+                                flickable.scaleFactor = value
+                            }
                         }
                         
                         background: Rectangle {
                             x: zoomSlider.leftPadding
                             y: zoomSlider.topPadding + zoomSlider.availableHeight / 2 - height / 2
                             implicitWidth: 200
-                            implicitHeight: 4
+                            implicitHeight: 6
                             width: zoomSlider.availableWidth
                             height: implicitHeight
-                            radius: 2
-                            color: Theme.surfaceDark
+                            radius: 3
+                            color: "#E0E0E0"
                             
                             Rectangle {
                                 width: zoomSlider.visualPosition * parent.width
                                 height: parent.height
                                 color: Theme.primary
-                                radius: 2
+                                radius: 3
                             }
                         }
                         
                         handle: Rectangle {
                             x: zoomSlider.leftPadding + zoomSlider.visualPosition * (zoomSlider.availableWidth - width)
                             y: zoomSlider.topPadding + zoomSlider.availableHeight / 2 - height / 2
-                            implicitWidth: 20
-                            implicitHeight: 20
-                            radius: 10
+                            implicitWidth: 24
+                            implicitHeight: 24
+                            radius: 12
                             color: zoomSlider.pressed ? Theme.primaryDark : Theme.primary
                             border.color: "white"
-                            border.width: 2
+                            border.width: 3
+                            
+                            // Внутренний круг для глубины
+                            Rectangle {
+                                anchors.centerIn: parent
+                                width: 8
+                                height: 8
+                                radius: 4
+                                color: "white"
+                                opacity: 0.3
+                            }
                         }
                     }
                     
-                    Text {
-                        text: "+"
-                        font.pixelSize: 18
-                        font.bold: true
-                        color: Theme.textPrimary
-                        width: 24
-                        horizontalAlignment: Text.AlignHCenter
-                        anchors.verticalCenter: parent.verticalCenter
+                    // Кнопка увеличения
+                    Rectangle {
+                        width: 32
+                        height: 32
+                        radius: 16
+                        color: zoomInMouse.pressed ? Theme.primaryDark : Theme.primary
+                        
+                        Text {
+                            text: "+"
+                            font.pixelSize: 20
+                            font.bold: true
+                            color: "white"
+                            anchors.centerIn: parent
+                        }
+                        
+                        MouseArea {
+                            id: zoomInMouse
+                            anchors.fill: parent
+                            onClicked: {
+                                var newScale = Math.min(2.0, flickable.scaleFactor + 0.1)
+                                flickable.scaleFactor = newScale
+                                zoomSlider.value = newScale
+                            }
+                        }
                     }
-                }
-                
-                // Индикатор зума
-                Text {
-                    text: Math.round(flickable.scaleFactor * 100) + "%"
-                    font.pixelSize: Theme.fontSizeSmall
-                    font.bold: true
-                    color: Theme.textPrimary
-                    width: parent.width
-                    horizontalAlignment: Text.AlignHCenter
                 }
             }
             

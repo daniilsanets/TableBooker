@@ -119,13 +119,14 @@ Page {
                     height: 40
                     
                     Row {
-                        anchors.fill: parent
+                        width: parent.width
+                        height: parent.height
                         spacing: 12
                         
                         TextField {
                             id: passwordField
-                            anchors.verticalCenter: parent.verticalCenter
-                            width: parent.parent.width - 60
+                            width: parent.width - 52
+                            height: parent.height
                             placeholderText: "Пароль"
                             echoMode: showPassArea.checked ? TextInput.Normal : TextInput.Password
                             background: Item {}
@@ -137,22 +138,19 @@ Page {
                             id: showPassArea
                             width: 40
                             height: 40
-                            anchors.right: parent.right
-                            anchors.rightMargin: 0
-                            anchors.verticalCenter: parent.verticalCenter
                         
-                        property bool checked: false
-                        
-                        Text {
-                            text: parent.checked ? Theme.iconVisibilityOff : Theme.iconVisibility
-                            font.pixelSize: 24
-                            color: Theme.textSecondary
-                            anchors.centerIn: parent
+                            property bool checked: false
+                            
+                            Text {
+                                text: parent.checked ? Theme.iconVisibilityOff : Theme.iconVisibility
+                                font.pixelSize: 24
+                                color: Theme.textSecondary
+                                anchors.centerIn: parent
+                            }
+                            
+                            onClicked: checked = !checked
                         }
-                        
-                        onClicked: checked = !checked
                     }
-                }
             }
         }
 

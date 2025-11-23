@@ -100,41 +100,61 @@ Item {
         }
     }
 
-    // РУЧКА ИЗМЕНЕНИЯ РАЗМЕРА (Resize Handle) - Улучшенная версия
+    // РУЧКА ИЗМЕНЕНИЯ РАЗМЕРА (Resize Handle) - Исправленная версия
     Rectangle {
-        width: 16; height: 16
+        id: resizeHandle
+        width: 20; height: 20
         color: "#2196F3"
         anchors.bottom: parent.bottom
         anchors.right: parent.right
-        radius: 8
+        radius: 10
         visible: root.isEditable && root.isSelected && root.type !== "plant" && root.type !== "room"
         z: 1000
-        border.width: 2
+        border.width: 3
         border.color: "white"
+        
+        // Внутренний индикатор
+        Rectangle {
+            anchors.centerIn: parent
+            width: 8
+            height: 8
+            radius: 4
+            color: "white"
+            opacity: 0.8
+        }
 
         MouseArea {
+            id: resizeMouseArea
             anchors.fill: parent
-            anchors.margins: -4 // Увеличиваем область клика
+            anchors.margins: -6 // Увеличиваем область клика для удобства
             cursorShape: Qt.SizeFDiagCursor
             property real startW: 0
             property real startH: 0
-            property real startX: 0
-            property real startY: 0
+            property real startRootX: 0
+            property real startRootY: 0
+            property real startMouseX: 0
+            property real startMouseY: 0
             
-            onPressed: {
+            onPressed: (mouse) => {
                 startW = root.width
                 startH = root.height
-                startX = mouseX
-                startY = mouseY
+                startRootX = root.x
+                startRootY = root.y
+                // Сохраняем координаты мыши относительно родителя TableWidget
+                startMouseX = mouse.x
+                startMouseY = mouse.y
             }
             
-            onPositionChanged: {
+            onPositionChanged: (mouse) => {
                 if (pressed) {
-                    var deltaX = mouseX - startX
-                    var deltaY = mouseY - startY
+                    // Вычисляем дельту относительно начальной позиции мыши
+                    var deltaX = mouse.x - startMouseX
+                    var deltaY = mouse.y - startMouseY
+                    
                     // Применяем сетку 10px
                     var newW = Math.max(20, Math.round((startW + deltaX) / 10) * 10)
                     var newH = Math.max(20, Math.round((startH + deltaY) / 10) * 10)
+                    
                     root.width = newW
                     root.height = newH
                     root.resized(newW, newH)

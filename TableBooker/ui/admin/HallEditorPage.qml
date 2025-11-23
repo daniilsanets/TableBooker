@@ -100,7 +100,7 @@ Page {
             selectedIndex = -1
         }
     }
-    
+
     function getSelectedItem() {
         if (selectedIndex >= 0 && selectedIndex < tablesModel.count) {
             return tablesModel.get(selectedIndex)
@@ -158,7 +158,7 @@ Page {
     ZoomableHall {
         id: hallView
         anchors.fill: parent
-        anchors.bottomMargin: propertiesPanel.visible ? propertiesPanel.height : 0
+        anchors.rightMargin: propertiesPanel.visible ? propertiesPanel.width : 0
         tablesModel: tablesModel
         editMode: true
         selectedIndex: page.selectedIndex
@@ -176,7 +176,7 @@ Page {
             page.selectedIndex = -1 // Сброс выделения
         }
         
-        Behavior on anchors.bottomMargin {
+        Behavior on anchors.rightMargin {
             NumberAnimation { duration: 200; easing.type: Easing.OutCubic }
         }
     }
@@ -193,354 +193,356 @@ Page {
         }
     }
 
-    // 2. ПАНЕЛЬ СВОЙСТВ (Профессиональная панель редактирования)
+    // 2. ПАНЕЛЬ СВОЙСТВ (Справа для маленьких экранов)
     Rectangle {
         id: propertiesPanel
-        width: parent.width
-        height: propertiesColumn.height + Theme.spacingMedium * 2
+        width: Math.min(320, parent.width * 0.4)
+        height: parent.height
         color: Theme.surface
+        anchors.right: parent.right
+        anchors.top: parent.top
         anchors.bottom: parent.bottom
         visible: page.selectedIndex >= 0
         z: 200
         border.color: Theme.divider
         border.width: 1
 
-        // Профессиональная тень сверху
+        // Профессиональная тень слева
         Rectangle {
             anchors.top: parent.top
             anchors.left: parent.left
-            anchors.right: parent.right
-            height: 12
+            anchors.bottom: parent.bottom
+            width: 16
             z: -1
             gradient: Gradient {
-                GradientStop { position: 0.0; color: "#20000000" }
+                GradientStop { position: 0.0; color: "#30000000" }
+                GradientStop { position: 0.5; color: "#15000000" }
                 GradientStop { position: 1.0; color: "transparent" }
             }
         }
 
-        ColumnLayout {
-            id: propertiesColumn
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.top: parent.top
-            anchors.margins: Theme.spacingMedium
-            spacing: Theme.spacingSmall
+        ScrollView {
+            anchors.fill: parent
+            anchors.margins: 10
+            clip: true
+            
+            ColumnLayout {
+                id: propertiesColumn
+                width: propertiesPanel.width - 20
+                spacing: 12
 
-            // Заголовок с именем объекта
-        RowLayout {
-                Layout.fillWidth: true
-                spacing: Theme.spacingMedium
+                // Заголовок с именем объекта
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 12
+
+        Rectangle {
+                        width: 40
+                        height: 40
+                        radius: 20
+                        color: Theme.primary
+                        opacity: 0.1
+                        
+                        Text {
+                            text: "✏️"
+                            font.pixelSize: 20
+                            anchors.centerIn: parent
+                        }
+                    }
+
+                    Label { 
+                        text: {
+                            var item = getSelectedItem()
+                            if (item) return item.name || "Объект"
+                            return "Объект"
+                        }
+                        font.bold: true
+                        font.pixelSize: Theme.fontSizeLarge
+                        color: Theme.textPrimary
+                        Layout.fillWidth: true
+                    }
+
+            Button {
+                        width: 40
+                        height: 40
+                background: Rectangle {
+                            color: Theme.error
+                            radius: 20
+                        }
+                        contentItem: Text {
+                            text: Theme.iconDelete
+                            color: "white"
+                            font.pixelSize: 18
+                            anchors.centerIn: parent
+                        }
+                        onClicked: removeSelected()
+                    }
+                }
+                
+                Rectangle {
+                    Layout.fillWidth: true
+                    height: 1
+                    color: Theme.divider
+                }
+
+                // Основные контролы - Вертикальная компоновка
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 12
+
+                    // Поворот
+                    Column {
+                        Layout.fillWidth: true
+                        spacing: 4
+                        
+                        Label {
+                            text: "Поворот (°)"
+                            font.pixelSize: Theme.fontSizeSmall
+                            font.bold: true
+                            color: Theme.textSecondary
+                        }
+                        SpinBox {
+                            id: rotationSpinBox
+                            width: parent.width
+                            from: -360
+                            to: 360
+                            stepSize: 15
+                            value: {
+                                var item = getSelectedItem()
+                                return item ? item.rotation : 0
+                            }
+                            property bool updating: false
+                            onValueChanged: {
+                                if (!updating && selectedIndex >= 0) {
+                                    var item = getSelectedItem()
+                                    if (item && value !== item.rotation) {
+                                        setSelectedProperty("rotation", value)
+                                    }
+                                }
+                            }
+                            Component.onCompleted: {
+                                page.selectedIndexChanged.connect(function() {
+                                    updating = true
+                                    var item = getSelectedItem()
+                                    if (item) value = item.rotation
+                                    updating = false
+                                })
+                            }
+                            background: Rectangle {
+                                color: "#FFFFFF"
+                                radius: Theme.radiusSmall
+                                border.width: 2
+                                border.color: Theme.primary
+                            }
+                            contentItem: Text {
+                                text: rotationSpinBox.value
+                                font.pixelSize: Theme.fontSizeLarge
+                                font.bold: true
+                                color: "#212121"
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
+                            }
+                        }
+                    }
+
+                    // Ширина
+                    Column {
+                        Layout.fillWidth: true
+                        spacing: 4
+                        
+                        Label {
+                            text: "Ширина"
+                            font.pixelSize: Theme.fontSizeSmall
+                            font.bold: true
+                            color: Theme.textSecondary
+                        }
+                        SpinBox {
+                            id: widthSpinBox
+                            width: parent.width
+                            from: 20
+                            to: 1000
+                            stepSize: 10
+                            value: {
+                                var item = getSelectedItem()
+                                return item ? item.width : 80
+                            }
+                            property bool updating: false
+                            onValueChanged: {
+                                if (!updating && selectedIndex >= 0) {
+                                    var item = getSelectedItem()
+                                    if (item && value !== item.width) {
+                                        setSelectedProperty("width", value)
+                                    }
+                                }
+                            }
+                            Component.onCompleted: {
+                                page.selectedIndexChanged.connect(function() {
+                                    updating = true
+                                    var item = getSelectedItem()
+                                    if (item) value = item.width
+                                    updating = false
+                                })
+                            }
+                            background: Rectangle {
+                                color: "#FFFFFF"
+                                radius: Theme.radiusSmall
+                                border.width: 2
+                                border.color: Theme.primary
+                            }
+                            contentItem: Text {
+                                text: widthSpinBox.value
+                                font.pixelSize: Theme.fontSizeLarge
+                                font.bold: true
+                                color: "#212121"
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
+                            }
+                        }
+                    }
+
+                    // Высота
+                    Column {
+                        Layout.fillWidth: true
+                        spacing: 4
 
             Label { 
-                    text: {
-                        var item = getSelectedItem()
-                        if (item) return item.name || "Объект"
-                        return "Объект"
-                    }
+                            text: "Высота"
+                            font.pixelSize: Theme.fontSizeSmall
                 font.bold: true
-                    font.pixelSize: Theme.fontSizeLarge
-                    color: Theme.textPrimary
+                color: Theme.textSecondary
+                        }
+                        SpinBox {
+                            id: heightSpinBox
+                            width: parent.width
+                            from: 20
+                            to: 1000
+                            stepSize: 10
+                            value: {
+                                var item = getSelectedItem()
+                                return item ? item.height : 80
+                            }
+                            property bool updating: false
+                            onValueChanged: {
+                                if (!updating && selectedIndex >= 0) {
+                                    var item = getSelectedItem()
+                                    if (item && value !== item.height) {
+                                        setSelectedProperty("height", value)
+                                    }
+                                }
+                            }
+                            Component.onCompleted: {
+                                page.selectedIndexChanged.connect(function() {
+                                    updating = true
+                                    var item = getSelectedItem()
+                                    if (item) value = item.height
+                                    updating = false
+                                })
+                            }
+                            background: Rectangle {
+                                color: "#FFFFFF"
+                                radius: Theme.radiusSmall
+                                border.width: 2
+                                border.color: Theme.primary
+                            }
+                            contentItem: Text {
+                                text: heightSpinBox.value
+                                font.pixelSize: Theme.fontSizeLarge
+                                font.bold: true
+                                color: "#212121"
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
+                            }
+                        }
+                    }
+                }
+
+                Rectangle {
                     Layout.fillWidth: true
+                    height: 1
+                    color: Theme.divider
+                }
+
+                // Быстрые кнопки поворота
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 8
+
+                    Button {
+                        text: "↺ -15°"
+                        Layout.fillWidth: true
+                        height: 36
+                        background: Rectangle {
+                            color: parent.pressed ? Theme.primaryDark : Theme.primary
+                            radius: Theme.radiusSmall
+                        }
+                        contentItem: Text {
+                            text: parent.text
+                            color: "white"
+                            font.pixelSize: Theme.fontSizeSmall
+                            font.bold: true
+                            horizontalAlignment: Text.AlignHCenter
+                        }
+                        onClicked: modifySelected("rotation", -15)
+                    }
+
+                    Button {
+                        text: "↻ +15°"
+                        Layout.fillWidth: true
+                        height: 36
+                        background: Rectangle {
+                            color: parent.pressed ? Theme.primaryDark : Theme.primary
+                            radius: Theme.radiusSmall
+                        }
+                        contentItem: Text {
+                            text: parent.text
+                            color: "white"
+                            font.pixelSize: Theme.fontSizeSmall
+                            font.bold: true
+                            horizontalAlignment: Text.AlignHCenter
+                        }
+                        onClicked: modifySelected("rotation", 15)
             }
 
             Button {
-                text: Theme.iconDelete
+                        text: "↺ -45°"
+                        Layout.fillWidth: true
+                        height: 36
                 background: Rectangle {
-                    color: Theme.error
+                            color: parent.pressed ? Theme.primaryDark : Theme.primary
+                    radius: Theme.radiusSmall
+                }
+                contentItem: Text {
+                    text: parent.text
+                            color: "white"
+                            font.pixelSize: Theme.fontSizeSmall
+                            font.bold: true
+                            horizontalAlignment: Text.AlignHCenter
+                        }
+                        onClicked: modifySelected("rotation", -45)
+            }
+
+            Button {
+                        text: "↻ +45°"
+                        Layout.fillWidth: true
+                        height: 36
+                background: Rectangle {
+                            color: parent.pressed ? Theme.primaryDark : Theme.primary
                     radius: Theme.radiusSmall
                 }
                 contentItem: Text {
                     text: parent.text
                     color: "white"
-                    font.pixelSize: Theme.fontSizeMedium
-                }
-                onClicked: removeSelected()
-            }
-            }
-
-            // Основные контролы
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: Theme.spacingSmall
-
-                // Позиция X
-                Column {
-                    spacing: 4
-                    Label {
-                        text: "X"
-                        font.pixelSize: Theme.fontSizeSmall
-                        color: Theme.textSecondary
+                            font.pixelSize: Theme.fontSizeSmall
+                            font.bold: true
+                            horizontalAlignment: Text.AlignHCenter
+                        }
+                        onClicked: modifySelected("rotation", 45)
                     }
-                    SpinBox {
-                        id: posXSpinBox
-                        from: 0
-                        to: 10000
-                        stepSize: 10
-                        value: {
-                            var item = getSelectedItem()
-                            return item ? item.x : 0
-                        }
-                        property bool updating: false
-                        onValueChanged: {
-                            if (!updating && selectedIndex >= 0) {
-                                var item = getSelectedItem()
-                                if (item && value !== item.x) {
-                                    setSelectedProperty("x", value)
-                                }
-                            }
-                        }
-                        Component.onCompleted: {
-                            page.selectedIndexChanged.connect(function() {
-                                updating = true
-                                var item = getSelectedItem()
-                                if (item) value = item.x
-                                updating = false
-                            })
-                        }
-                        background: Rectangle {
-                            color: Theme.surfaceDark
-                            radius: Theme.radiusSmall
-                        }
-                    }
-                }
-
-                // Позиция Y
-                Column {
-                    spacing: 4
-                    Label {
-                        text: "Y"
-                        font.pixelSize: Theme.fontSizeSmall
-                        color: Theme.textSecondary
-                    }
-                    SpinBox {
-                        id: posYSpinBox
-                        from: 0
-                        to: 10000
-                        stepSize: 10
-                        value: {
-                            var item = getSelectedItem()
-                            return item ? item.y : 0
-                        }
-                        property bool updating: false
-                        onValueChanged: {
-                            if (!updating && selectedIndex >= 0) {
-                                var item = getSelectedItem()
-                                if (item && value !== item.y) {
-                                    setSelectedProperty("y", value)
-                                }
-                            }
-                        }
-                        Component.onCompleted: {
-                            page.selectedIndexChanged.connect(function() {
-                                updating = true
-                                var item = getSelectedItem()
-                                if (item) value = item.y
-                                updating = false
-                            })
-                        }
-                        background: Rectangle {
-                            color: Theme.surfaceDark
-                            radius: Theme.radiusSmall
-                        }
-                    }
-                }
-
-                // Ширина
-                Column {
-                    spacing: 4
-                    Label {
-                        text: "Ш"
-                        font.pixelSize: Theme.fontSizeSmall
-                        color: Theme.textSecondary
-                    }
-                    SpinBox {
-                        id: widthSpinBox
-                        from: 20
-                        to: 1000
-                        stepSize: 10
-                        value: {
-                            var item = getSelectedItem()
-                            return item ? item.width : 80
-                        }
-                        property bool updating: false
-                        onValueChanged: {
-                            if (!updating && selectedIndex >= 0) {
-                                var item = getSelectedItem()
-                                if (item && value !== item.width) {
-                                    setSelectedProperty("width", value)
-                                }
-                            }
-                        }
-                        Component.onCompleted: {
-                            page.selectedIndexChanged.connect(function() {
-                                updating = true
-                                var item = getSelectedItem()
-                                if (item) value = item.width
-                                updating = false
-                            })
-                        }
-                        background: Rectangle {
-                            color: Theme.surfaceDark
-                            radius: Theme.radiusSmall
-                        }
-                    }
-                }
-
-                // Высота
-                Column {
-                    spacing: 4
-                    Label {
-                        text: "В"
-                        font.pixelSize: Theme.fontSizeSmall
-                        color: Theme.textSecondary
-                    }
-                    SpinBox {
-                        id: heightSpinBox
-                        from: 20
-                        to: 1000
-                        stepSize: 10
-                        value: {
-                            var item = getSelectedItem()
-                            return item ? item.height : 80
-                        }
-                        property bool updating: false
-                        onValueChanged: {
-                            if (!updating && selectedIndex >= 0) {
-                                var item = getSelectedItem()
-                                if (item && value !== item.height) {
-                                    setSelectedProperty("height", value)
-                                }
-                            }
-                        }
-                        Component.onCompleted: {
-                            page.selectedIndexChanged.connect(function() {
-                                updating = true
-                                var item = getSelectedItem()
-                                if (item) value = item.height
-                                updating = false
-                            })
-                        }
-                        background: Rectangle {
-                            color: Theme.surfaceDark
-                            radius: Theme.radiusSmall
-                        }
-                    }
-                }
-
-                // Поворот
-                Column {
-                    spacing: 4
-                    Label {
-                        text: "°"
-                        font.pixelSize: Theme.fontSizeSmall
-                        color: Theme.textSecondary
-                    }
-                    SpinBox {
-                        id: rotationSpinBox
-                        from: -360
-                        to: 360
-                        stepSize: 15
-                        value: {
-                            var item = getSelectedItem()
-                            return item ? item.rotation : 0
-                        }
-                        property bool updating: false
-                        onValueChanged: {
-                            if (!updating && selectedIndex >= 0) {
-                                var item = getSelectedItem()
-                                if (item && value !== item.rotation) {
-                                    setSelectedProperty("rotation", value)
-                                }
-                            }
-                        }
-                        Component.onCompleted: {
-                            page.selectedIndexChanged.connect(function() {
-                                updating = true
-                                var item = getSelectedItem()
-                                if (item) value = item.rotation
-                                updating = false
-                            })
-                        }
-                        background: Rectangle {
-                            color: Theme.surfaceDark
-                            radius: Theme.radiusSmall
-                        }
-                    }
-                }
-            }
-
-            // Быстрые кнопки
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: Theme.spacingSmall
-
-                Button {
-                    text: Theme.iconRotateLeft + " -15°"
-                    Layout.fillWidth: true
-                    background: Rectangle {
-                        color: Theme.surfaceDark
-                        radius: Theme.radiusSmall
-                    }
-                    contentItem: Text {
-                        text: parent.text
-                        color: Theme.textPrimary
-                        font.pixelSize: Theme.fontSizeSmall
-                        horizontalAlignment: Text.AlignHCenter
-                    }
-                    onClicked: modifySelected("rotation", -15)
-                }
-
-                Button {
-                    text: Theme.iconRotateRight + " +15°"
-                    Layout.fillWidth: true
-                    background: Rectangle {
-                        color: Theme.surfaceDark
-                        radius: Theme.radiusSmall
-                    }
-                    contentItem: Text {
-                        text: parent.text
-                        color: Theme.textPrimary
-                        font.pixelSize: Theme.fontSizeSmall
-                        horizontalAlignment: Text.AlignHCenter
-                    }
-                    onClicked: modifySelected("rotation", 15)
-                }
-
-                Button {
-                    text: Theme.iconRotateLeft + " -45°"
-                    Layout.fillWidth: true
-                    background: Rectangle {
-                        color: Theme.surfaceDark
-                        radius: Theme.radiusSmall
-                    }
-                    contentItem: Text {
-                        text: parent.text
-                        color: Theme.textPrimary
-                        font.pixelSize: Theme.fontSizeSmall
-                        horizontalAlignment: Text.AlignHCenter
-                    }
-                    onClicked: modifySelected("rotation", -45)
-                }
-
-                Button {
-                    text: Theme.iconRotateRight + " +45°"
-                    Layout.fillWidth: true
-                    background: Rectangle {
-                        color: Theme.surfaceDark
-                        radius: Theme.radiusSmall
-                    }
-                    contentItem: Text {
-                        text: parent.text
-                        color: Theme.textPrimary
-                        font.pixelSize: Theme.fontSizeSmall
-                        horizontalAlignment: Text.AlignHCenter
-                    }
-                    onClicked: modifySelected("rotation", 45)
                 }
             }
         }
 
-        Behavior on height {
+        Behavior on width {
             NumberAnimation { duration: 200; easing.type: Easing.OutCubic }
         }
     }
@@ -554,8 +556,8 @@ Page {
         color: Theme.accent
         anchors.bottom: parent.bottom
         anchors.right: parent.right
-        anchors.bottomMargin: propertiesPanel.visible ? propertiesPanel.height + 16 : (addDrawer.isOpen ? addDrawer.height + 16 : 16)
-        anchors.rightMargin: 16
+        anchors.bottomMargin: addDrawer.isOpen ? addDrawer.height + 16 : 16
+        anchors.rightMargin: propertiesPanel.visible ? propertiesPanel.width + 16 : 16
         visible: page.selectedIndex === -1 && !addDrawer.isOpen
         z: 1000
         
@@ -593,7 +595,7 @@ Page {
             NumberAnimation { duration: 150 }
         }
         
-        Behavior on anchors.bottomMargin {
+        Behavior on anchors.rightMargin {
             NumberAnimation { duration: 200; easing.type: Easing.OutCubic }
         }
     }
@@ -650,11 +652,13 @@ Page {
             NumberAnimation { duration: 300; easing.type: Easing.OutCubic }
         }
         
-        // Затемнение фона
+        // Затемнение фона - используем Overlay
         Rectangle {
-            anchors.fill: parent.parent
+            id: overlay
+            parent: page
+            anchors.fill: parent
             color: "#80000000"
-            z: -2
+            z: 1499
             visible: addDrawer.isOpen
             opacity: addDrawer.isOpen ? 1 : 0
             MouseArea {
