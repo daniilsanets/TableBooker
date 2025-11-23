@@ -1,68 +1,198 @@
 import QtQuick 2.15
-import QtQuick.Controls
-import QtQuick.Layouts
+import QtQuick.Controls 2.15
+import QtQuick.Layouts 1.15
 import com.tablebooker.api 1.0
 import "admin"
 import "user"
+import "components"
+import "Theme.js" as Theme
 
 Page {
     id: loginPage
-    title: "Вход в TableBooker"
+    title: "Вход"
+    
+    background: Rectangle {
+        color: Theme.background
+    }
 
     ColumnLayout {
-        width: parent.width * 0.85
-        spacing: parent.height * 0.02
-        anchors.top: parent.top
-        anchors.topMargin: parent.height * 0.2
-        anchors.horizontalCenter: parent.horizontalCenter
+        width: parent.width * 0.9
+        spacing: Theme.spacingLarge
+        anchors.centerIn: parent
 
-        TextField {
-            id: loginField
-            placeholderText: qsTr("Телефон, Email или Логин")
-            Layout.fillWidth: true
-        }
-
-        TextField
-        {
-            id: passwordField
-            placeholderText: qsTr("Введите пароль")
-            echoMode: showPassArea.checked ? TextInput.Normal : TextInput.Password
-            Layout.fillWidth: true
-
-            // Отступ справа, чтобы текст пароля не налез на кнопку
-            rightPadding: 50
-
-            Text
-            {
-                id: eyeIcon
-                text: showPassArea.checked ? "🙈" : "👁️"
-
-                anchors.right: parent.right
-                anchors.verticalCenter: parent.verticalCenter
-                anchors.rightMargin: 10
-
-                font.pixelSize: 14
-                color: "gray"
-                // Чтобы текст был всегда поверх поля
-                z: 1
+        // Логотип и заголовок
+        Column {
+            Layout.alignment: Qt.AlignHCenter
+            Layout.topMargin: 40
+            spacing: Theme.spacingMedium
+            
+            Text {
+                text: "🍽️"
+                font.pixelSize: 80
+                anchors.horizontalCenter: parent.horizontalCenter
             }
-
-            MouseArea
-            {
-                id: showPassArea
-                anchors.fill: eyeIcon
-                anchors.margins: -10
-
-                property bool checked: false
-                onClicked: checked = !checked
+            
+            Text {
+                text: "TableBooker"
+                font.pixelSize: Theme.fontSizeXXLarge
+                font.bold: true
+                color: Theme.textPrimary
+                anchors.horizontalCenter: parent.horizontalCenter
+            }
+            
+            Text {
+                text: "Бронирование столиков"
+                font.pixelSize: Theme.fontSizeMedium
+                color: Theme.textSecondary
+                anchors.horizontalCenter: parent.horizontalCenter
             }
         }
 
-        Button
-        {
+        // Поля ввода
+        ColumnLayout {
+            Layout.fillWidth: true
+            spacing: Theme.spacingMedium
+            
+            // Поле логина
+            Rectangle {
+                Layout.fillWidth: true
+                height: 56
+                color: Theme.surface
+                radius: Theme.radiusMedium
+                border.color: loginField.activeFocus ? Theme.primary : Theme.divider
+                border.width: loginField.activeFocus ? 2 : 1
+                
+                // Тонкая тень
+                Rectangle {
+                    anchors.fill: parent
+                    anchors.margins: -1
+                    z: -1
+                    color: "#08000000"
+                    radius: parent.radius + 1
+                    opacity: loginField.activeFocus ? 0.1 : 0.05
+                }
+                
+                Item {
+                    anchors.left: parent.left
+                    anchors.leftMargin: 16
+                    anchors.right: parent.right
+                    anchors.rightMargin: 16
+                    anchors.verticalCenter: parent.verticalCenter
+                    height: 40
+                    
+                    TextField {
+                        id: loginField
+                        anchors.fill: parent
+                        placeholderText: "Телефон, Email или Логин"
+                        background: Item {}
+                        font.pixelSize: Theme.fontSizeMedium
+                        color: Theme.textPrimary
+                    }
+                }
+            }
+            
+            // Поле пароля
+            Rectangle {
+                Layout.fillWidth: true
+                height: 56
+                color: Theme.surface
+                radius: Theme.radiusMedium
+                border.color: passwordField.activeFocus ? Theme.primary : Theme.divider
+                border.width: passwordField.activeFocus ? 2 : 1
+                
+                // Тонкая тень
+                Rectangle {
+                    anchors.fill: parent
+                    anchors.margins: -1
+                    z: -1
+                    color: "#08000000"
+                    radius: parent.radius + 1
+                    opacity: passwordField.activeFocus ? 0.1 : 0.05
+                }
+                
+                Item {
+                    anchors.left: parent.left
+                    anchors.leftMargin: 16
+                    anchors.right: parent.right
+                    anchors.rightMargin: 16
+                    anchors.verticalCenter: parent.verticalCenter
+                    height: 40
+                    
+                    Row {
+                        anchors.fill: parent
+                        spacing: 12
+                        
+                        TextField {
+                            id: passwordField
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: parent.parent.width - 60
+                            placeholderText: "Пароль"
+                            echoMode: showPassArea.checked ? TextInput.Normal : TextInput.Password
+                            background: Item {}
+                            font.pixelSize: Theme.fontSizeMedium
+                            color: Theme.textPrimary
+                        }
+                        
+                        MouseArea {
+                            id: showPassArea
+                            width: 40
+                            height: 40
+                            anchors.right: parent.right
+                            anchors.rightMargin: 0
+                            anchors.verticalCenter: parent.verticalCenter
+                        
+                        property bool checked: false
+                        
+                        Text {
+                            text: parent.checked ? Theme.iconVisibilityOff : Theme.iconVisibility
+                            font.pixelSize: 24
+                            color: Theme.textSecondary
+                            anchors.centerIn: parent
+                        }
+                        
+                        onClicked: checked = !checked
+                    }
+                }
+            }
+        }
+
+        // Кнопка входа
+        Button {
+            id: loginButton
             text: "Войти"
             Layout.fillWidth: true
-            highlighted: true
+            Layout.topMargin: Theme.spacingMedium
+            height: 56
+            
+            background: Rectangle {
+                color: Theme.primary
+                radius: Theme.radiusMedium
+                opacity: loginButton.pressed ? 0.9 : 1.0
+                
+                // Тень для кнопки
+                Rectangle {
+                    anchors.fill: parent
+                    anchors.margins: -2
+                    z: -1
+                    color: Theme.primary
+                    radius: parent.radius + 2
+                    opacity: 0.3
+                }
+                
+                Behavior on opacity {
+                    NumberAnimation { duration: 150 }
+                }
+            }
+            
+            contentItem: Text {
+                text: loginButton.text
+                color: "white"
+                font.pixelSize: Theme.fontSizeLarge
+                font.bold: true
+                font.weight: Font.DemiBold
+                horizontalAlignment: Text.AlignHCenter
+                verticalAlignment: Text.AlignVCenter
+            }
 
             onClicked: {
                 var user = BackendApi.authenticateUser(loginField.text, passwordField.text)
@@ -77,19 +207,50 @@ Page {
                     }
 
                 } else {
-                    console.log("Ошибка: Неверный логин или пароль")
-                    // Тут можно добавить Dialog с ошибкой
+                    errorDialog.text = "Неверный логин или пароль"
+                    errorDialog.open()
                 }
             }
         }
 
-        Button
-        {
+        // Кнопка регистрации
+        Button {
             text: "Нет аккаунта? Зарегистрироваться"
-            flat: true
             Layout.fillWidth: true
+            flat: true
+            
+            contentItem: Text {
+                text: parent.text
+                color: Theme.primary
+                font.pixelSize: Theme.fontSizeMedium
+                horizontalAlignment: Text.AlignHCenter
+            }
 
             onClicked: loginPage.StackView.view.push("RegistrationScreen.qml")
         }
     }
+    
+    // Диалог ошибки
+    Dialog {
+        id: errorDialog
+        property alias text: errorLabel.text
+        x: (parent.width - width) / 2
+        y: (parent.height - height) / 2
+        width: parent.width * 0.8
+        modal: true
+        standardButtons: Dialog.Ok
+        
+        background: Rectangle {
+            color: Theme.surface
+            radius: Theme.radiusMedium
+        }
+        
+        Label {
+            id: errorLabel
+            text: ""
+            color: Theme.error
+            wrapMode: Text.WordWrap
+        }
+    }
+}
 }

@@ -1,17 +1,21 @@
 <RCC>
     <qresource prefix="/TableBooker">
         <file>main.qml</file>
+        <file>ui/AboutPage.qml</file>
         <file>ui/LoginScreen.qml</file>
         <file>ui/RegistrationScreen.qml</file>
+        <file>ui/Theme.js</file>
         <file>ui/admin/AdminDashboardPage.qml</file>
-        <file>ui/user/UserPremisesListPage.qml</file>
-        <file>ui/admin/HallEditorPage.qml</file>
         <file>ui/admin/EditableTableItem.qml</file>
-        <file>ui/user/UserPremisesListPage.qml</file>
-        <file>ui/user/BookingHallPage.qml</file>
-        <file>ui/user/BookingPopup.qml</file>
-        <file>ui/AboutPage.qml</file>
+        <file>ui/admin/HallEditorPage.qml</file>
+        <file>ui/components/Card.qml</file>
+        <file>ui/components/IconLabel.qml</file>
+        <file>ui/components/MaterialButton.qml</file>
+        <file>ui/components/MaterialTextField.qml</file>
         <file>ui/components/TableWidget.qml</file>
         <file>ui/components/ZoomableHall.qml</file>
+        <file>ui/user/BookingHallPage.qml</file>
+        <file>ui/user/BookingPopup.qml</file>
+        <file>ui/user/UserPremisesListPage.qml</file>
     </qresource>
 </RCC>

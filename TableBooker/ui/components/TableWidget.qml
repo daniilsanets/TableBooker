@@ -37,13 +37,14 @@ Item {
         opacity: root.type === "plant" ? 0.7 : 1.0
 
         // Тень (только для мебели, не для пола)
-        layer.enabled: root.type !== "room" && root.type !== "floor"
-        layer.effect: MultiEffect {
-            shadowEnabled: true
-            shadowColor: "#40000000"
-            shadowBlur: 0.5
-            shadowHorizontalOffset: 2
-            shadowVerticalOffset: 2
+        Rectangle {
+            visible: root.type !== "room" && root.type !== "floor"
+            anchors.fill: parent
+            anchors.margins: -3
+            z: -1
+            color: "#40000000"
+            radius: parent.radius + 3
+            opacity: 0.3
         }
 
         // Текст (имя стола или метка WC)
@@ -51,8 +52,9 @@ Item {
             anchors.centerIn: parent
             text: root.itemName
             visible: root.type === "table" || root.type === "wc"
-            font.pixelSize: 14
+            font.pixelSize: Math.max(10, Math.min(14, root.width * 0.15))
             font.bold: true
+            color: root.type === "table" ? "#212121" : "#616161"
             rotation: -root.rotation // Чтобы текст оставался горизонтальным (опционально)
         }
 
@@ -65,37 +67,74 @@ Item {
         }
     }
 
-    // ЛОГИКА ПЕРЕМЕЩЕНИЯ
-    DragHandler {
-        target: root
-        enabled: root.isEditable && root.type !== "room" // Комнату двигать нельзя (обычно)
-        onActiveChanged: if (active) root.clicked() // Выделяем при нажатии
-        onTranslationChanged: root.moved(root.x, root.y)
+    // Единый обработчик клика и перетаскивания
+    MouseArea {
+        id: mainMouseArea
+        anchors.fill: parent
+        acceptedButtons: Qt.LeftButton
+        drag.target: root.isEditable && root.type !== "room" && root.type !== "floor" ? root : null
+        drag.axis: Drag.XAndYAxis
+        drag.minimumX: 0
+        drag.minimumY: 0
+        hoverEnabled: true
+        
+        onClicked: {
+            root.clicked()
+        }
+        
+        onReleased: {
+            if (root.isEditable) {
+                // Применяем сетку при отпускании (сетка 10px)
+                root.x = Math.round(root.x / 10) * 10
+                root.y = Math.round(root.y / 10) * 10
+                root.moved(root.x, root.y)
+            }
+        }
+        
+        onPositionChanged: {
+            if (pressed && root.isEditable) {
+                // Применяем сетку во время перетаскивания для плавности
+                root.x = Math.round(root.x / 10) * 10
+                root.y = Math.round(root.y / 10) * 10
+            }
+        }
     }
 
-    // КЛИК (ВЫДЕЛЕНИЕ)
-    TapHandler {
-        enabled: root.isEditable
-        onTapped: root.clicked()
-    }
-
-    // РУЧКА ИЗМЕНЕНИЯ РАЗМЕРА (Resize Handle)
+    // РУЧКА ИЗМЕНЕНИЯ РАЗМЕРА (Resize Handle) - Улучшенная версия
     Rectangle {
-        width: 24; height: 24
-        color: "#FF5722"
+        width: 16; height: 16
+        color: "#2196F3"
         anchors.bottom: parent.bottom
         anchors.right: parent.right
-        radius: 12
-        visible: root.isEditable && root.isSelected && root.type !== "plant"
+        radius: 8
+        visible: root.isEditable && root.isSelected && root.type !== "plant" && root.type !== "room"
+        z: 1000
+        border.width: 2
+        border.color: "white"
 
-        DragHandler {
-            target: null
-            property real startW: 0; property real startH: 0
-            onActiveChanged: { if (active) { startW = root.width; startH = root.height } }
-            onTranslationChanged: {
-                if (active) {
-                    var newW = Math.max(20, startW + translation.x)
-                    var newH = Math.max(20, startH + translation.y)
+        MouseArea {
+            anchors.fill: parent
+            anchors.margins: -4 // Увеличиваем область клика
+            cursorShape: Qt.SizeFDiagCursor
+            property real startW: 0
+            property real startH: 0
+            property real startX: 0
+            property real startY: 0
+            
+            onPressed: {
+                startW = root.width
+                startH = root.height
+                startX = mouseX
+                startY = mouseY
+            }
+            
+            onPositionChanged: {
+                if (pressed) {
+                    var deltaX = mouseX - startX
+                    var deltaY = mouseY - startY
+                    // Применяем сетку 10px
+                    var newW = Math.max(20, Math.round((startW + deltaX) / 10) * 10)
+                    var newH = Math.max(20, Math.round((startH + deltaY) / 10) * 10)
                     root.width = newW
                     root.height = newH
                     root.resized(newW, newH)
@@ -103,10 +142,41 @@ Item {
             }
         }
     }
-
-    // Обработчик для Юзера (просто клик)
-    TapHandler {
-        enabled: !root.isEditable
-        onTapped: root.clicked()
+    
+    // Дополнительные ручки для изменения размера (опционально, для больших объектов)
+    Rectangle {
+        width: 12; height: 12
+        color: "#2196F3"
+        anchors.top: parent.top
+        anchors.right: parent.right
+        radius: 6
+        visible: root.isEditable && root.isSelected && root.type !== "plant" && root.type !== "room" && root.width > 100
+        z: 1000
+        border.width: 2
+        border.color: "white"
+    }
+    
+    Rectangle {
+        width: 12; height: 12
+        color: "#2196F3"
+        anchors.bottom: parent.bottom
+        anchors.left: parent.left
+        radius: 6
+        visible: root.isEditable && root.isSelected && root.type !== "plant" && root.type !== "room" && root.width > 100
+        z: 1000
+        border.width: 2
+        border.color: "white"
+    }
+    
+    Rectangle {
+        width: 12; height: 12
+        color: "#2196F3"
+        anchors.top: parent.top
+        anchors.left: parent.left
+        radius: 6
+        visible: root.isEditable && root.isSelected && root.type !== "plant" && root.type !== "room" && root.width > 100
+        z: 1000
+        border.width: 2
+        border.color: "white"
     }
 }

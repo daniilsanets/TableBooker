@@ -5,8 +5,7 @@ SOURCES += \
         database/databasemanager.cpp \
         main.cpp
 
-RESOURCES += qml.qrc \
-    qml.qrc
+RESOURCES += qml.qrc
 
 # Additional import path used to resolve QML modules in Qt Creator's code model
 QML_IMPORT_PATH =
@@ -29,11 +28,16 @@ DISTFILES += \
     ui/AboutPage.qml \
     ui/LoginScreen.qml \
     ui/RegistrationScreen.qml \
+    ui/Theme.js \
     ui/admin/AdminDashboardPage.qml \
     ui/admin/EditableTableItem.qml \
     ui/admin/HallEditorPage.qml \
     ui/components/TableWidget.qml \
     ui/components/ZoomableHall.qml \
+    ui/components/MaterialButton.qml \
+    ui/components/MaterialTextField.qml \
+    ui/components/Card.qml \
+    ui/components/IconLabel.qml \
     ui/user/BookingHallPage.qml \
     ui/user/BookingPopup.qml \
     ui/user/UserPremisesListPage.qml

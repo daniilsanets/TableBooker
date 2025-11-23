@@ -4,6 +4,7 @@ import QtQuick.Layouts 1.15
 import QtQuick.Effects
 import com.tablebooker.api 1.0
 import "../components"
+import "../Theme.js" as Theme
 
 Page {
     id: page
@@ -56,12 +57,19 @@ Page {
                 if (tablesModel.get(i).type === "table") count++
             }
             newName = "T-" + (count + 1)
+        } else if (itemType === "room") {
+            var roomCount = 0
+            for(var i=0; i<tablesModel.count; i++) {
+                if (tablesModel.get(i).type === "room") roomCount++
+            }
+            newName = namePrefix || ("Зал " + (roomCount + 1))
+        } else if (itemType === "wc") {
+            newName = "WC"
         }
 
-        // Добавляем в центр экрана (учитывая скролл ZoomableHall)
-        // Доступ к flickable внутри ZoomableHall сложен, упростим:
-        var centerX = 500 // Или брать из hallView.contentX
-        var centerY = 500
+        // Добавляем в центр видимой области
+        var centerX = 1500
+        var centerY = 1500
 
         tablesModel.append({
             "dbId": -1, "name": newName,
@@ -70,12 +78,20 @@ Page {
             "rotation": 0, "type": itemType,
             "shapeType": shape, "color": col
         })
+        
+        // Автоматически выбираем новый элемент
+        selectedIndex = tablesModel.count - 1
     }
 
     function modifySelected(param, value) {
         if (selectedIndex < 0) return
         var currentVal = tablesModel.get(selectedIndex)[param]
         tablesModel.setProperty(selectedIndex, param, currentVal + value)
+    }
+    
+    function setSelectedProperty(param, value) {
+        if (selectedIndex < 0) return
+        tablesModel.setProperty(selectedIndex, param, value)
     }
 
     function removeSelected() {
@@ -84,22 +100,47 @@ Page {
             selectedIndex = -1
         }
     }
+    
+    function getSelectedItem() {
+        if (selectedIndex >= 0 && selectedIndex < tablesModel.count) {
+            return tablesModel.get(selectedIndex)
+        }
+        return null
+    }
 
     Component.onCompleted: loadTables()
 
     // --- ИНТЕРФЕЙС ---
 
     header: ToolBar {
-        background: Rectangle { color: "white" }
+        background: Rectangle { 
+            color: Theme.primary
+        }
         RowLayout {
             anchors.fill: parent
-            ToolButton { text: "←"; onClicked: page.StackView.view.pop() }
-            Label { text: page.title; font.bold: true; Layout.fillWidth: true }
+            anchors.leftMargin: 8
+            
+            ToolButton { 
+                Text {
+                    text: Theme.iconBack
+                    font.pixelSize: 24
+                    color: "white"
+                    anchors.centerIn: parent
+                }
+                onClicked: page.StackView.view.pop() 
+            }
+            Label { 
+                text: page.title
+                font.bold: true
+                font.pixelSize: Theme.fontSizeLarge
+                color: "white"
+                Layout.fillWidth: true 
+            }
             Button {
-                text: "Сохранить"
+                text: Theme.iconSave + " Сохранить"
                 flat: true
                 font.bold: true
-                palette.buttonText: "#2196F3"
+                palette.buttonText: "white"
                 onClicked: saveTables()
             }
         }
@@ -109,116 +150,711 @@ Page {
     ZoomableHall {
         id: hallView
         anchors.fill: parent
+        anchors.bottomMargin: propertiesPanel.visible ? propertiesPanel.height : 0
         tablesModel: tablesModel
         editMode: true
-
-        // Прокидываем индекс выделения внутрь компонента (если добавили свойство)
-        // property alias selectedIndex: page.selectedIndex (в ZoomableHall)
+        selectedIndex: page.selectedIndex
+        z: 1
 
         onTableClicked: (idx, dbId) => {
-            console.log("Выбран индекс:", idx)
             page.selectedIndex = idx
+            // Прокручиваем к выбранному элементу, чтобы он был виден
+            Qt.callLater(function() {
+                hallView.ensureItemVisible(idx)
+            })
         }
 
         onCanvasTapped: {
             page.selectedIndex = -1 // Сброс выделения
         }
+        
+        Behavior on anchors.bottomMargin {
+            NumberAnimation { duration: 200; easing.type: Easing.OutCubic }
+        }
     }
-
-    // 2. ПАНЕЛЬ СВОЙСТВ (Появляется снизу, когда выбран предмет)
-    Rectangle {
-        id: propertiesPanel
-        width: parent.width
-        height: 80
-        color: "white"
-        anchors.bottom: parent.bottom
-        visible: page.selectedIndex >= 0 // Видна только при выделении
-        z: 200
-
-        // Тень сверху панели
-        layer.enabled: true
-        layer.effect: MultiEffect { shadowEnabled: true; shadowVerticalOffset: -2; shadowBlur: 0.2 }
-
-        RowLayout {
-            anchors.centerIn: parent
-            spacing: 30
-
-            ToolButton {
-                text: "↺ -45°"
-                font.bold: true
-                onClicked: modifySelected("rotation", -45)
-            }
-
-            Label { text: "Правка"; font.bold: true; color: "gray" }
-
-            ToolButton {
-                text: "↻ +45°"
-                font.bold: true
-                onClicked: modifySelected("rotation", 45)
-            }
-
-            ToolButton {
-                text: "🗑️"
-                palette.buttonText: "red"
-                onClicked: removeSelected()
+    
+    // Отслеживаем изменения выбранного элемента для автоматической прокрутки
+    Connections {
+        target: page
+        function onSelectedIndexChanged() {
+            if (page.selectedIndex >= 0) {
+                Qt.callLater(function() {
+                    hallView.ensureItemVisible(page.selectedIndex)
+                })
             }
         }
     }
 
-    // 3. FAB - Кнопка "Добавить" (Скрываем, если открыта панель свойств)
-    RoundButton {
-        text: "+"
-        font.pixelSize: 30
-        width: 56; height: 56; radius: 28
-        highlighted: true
-        palette.button: "#FF5722"
-        palette.buttonText: "white"
-
+    // 2. ПАНЕЛЬ СВОЙСТВ (Профессиональная панель редактирования)
+    Rectangle {
+        id: propertiesPanel
+        width: parent.width
+        height: propertiesColumn.height + Theme.spacingMedium * 2
+        color: Theme.surface
         anchors.bottom: parent.bottom
-        anchors.right: parent.right
-        anchors.margins: 20
-        visible: page.selectedIndex === -1 // Скрываем, когда редактируем объект
+        visible: page.selectedIndex >= 0
+        z: 200
+        border.color: Theme.divider
+        border.width: 1
 
-        onClicked: addDrawer.open()
+        // Профессиональная тень сверху
+        Rectangle {
+            anchors.top: parent.top
+            anchors.left: parent.left
+            anchors.right: parent.right
+            height: 12
+            z: -1
+            gradient: Gradient {
+                GradientStop { position: 0.0; color: "#20000000" }
+                GradientStop { position: 1.0; color: "transparent" }
+            }
+        }
+
+        ColumnLayout {
+            id: propertiesColumn
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.top: parent.top
+            anchors.margins: Theme.spacingMedium
+            spacing: Theme.spacingSmall
+
+            // Заголовок с именем объекта
+        RowLayout {
+                Layout.fillWidth: true
+                spacing: Theme.spacingMedium
+
+            Label { 
+                    text: {
+                        var item = getSelectedItem()
+                        if (item) return item.name || "Объект"
+                        return "Объект"
+                    }
+                font.bold: true
+                    font.pixelSize: Theme.fontSizeLarge
+                    color: Theme.textPrimary
+                    Layout.fillWidth: true
+            }
+
+            Button {
+                text: Theme.iconDelete
+                background: Rectangle {
+                    color: Theme.error
+                    radius: Theme.radiusSmall
+                }
+                contentItem: Text {
+                    text: parent.text
+                    color: "white"
+                    font.pixelSize: Theme.fontSizeMedium
+                }
+                onClicked: removeSelected()
+            }
+            }
+
+            // Основные контролы
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: Theme.spacingSmall
+
+                // Позиция X
+                Column {
+                    spacing: 4
+                    Label {
+                        text: "X"
+                        font.pixelSize: Theme.fontSizeSmall
+                        color: Theme.textSecondary
+                    }
+                    SpinBox {
+                        id: posXSpinBox
+                        from: 0
+                        to: 10000
+                        stepSize: 10
+                        value: {
+                            var item = getSelectedItem()
+                            return item ? item.x : 0
+                        }
+                        property bool updating: false
+                        onValueChanged: {
+                            if (!updating && selectedIndex >= 0) {
+                                var item = getSelectedItem()
+                                if (item && value !== item.x) {
+                                    setSelectedProperty("x", value)
+                                }
+                            }
+                        }
+                        Component.onCompleted: {
+                            page.selectedIndexChanged.connect(function() {
+                                updating = true
+                                var item = getSelectedItem()
+                                if (item) value = item.x
+                                updating = false
+                            })
+                        }
+                        background: Rectangle {
+                            color: Theme.surfaceDark
+                            radius: Theme.radiusSmall
+                        }
+                    }
+                }
+
+                // Позиция Y
+                Column {
+                    spacing: 4
+                    Label {
+                        text: "Y"
+                        font.pixelSize: Theme.fontSizeSmall
+                        color: Theme.textSecondary
+                    }
+                    SpinBox {
+                        id: posYSpinBox
+                        from: 0
+                        to: 10000
+                        stepSize: 10
+                        value: {
+                            var item = getSelectedItem()
+                            return item ? item.y : 0
+                        }
+                        property bool updating: false
+                        onValueChanged: {
+                            if (!updating && selectedIndex >= 0) {
+                                var item = getSelectedItem()
+                                if (item && value !== item.y) {
+                                    setSelectedProperty("y", value)
+                                }
+                            }
+                        }
+                        Component.onCompleted: {
+                            page.selectedIndexChanged.connect(function() {
+                                updating = true
+                                var item = getSelectedItem()
+                                if (item) value = item.y
+                                updating = false
+                            })
+                        }
+                        background: Rectangle {
+                            color: Theme.surfaceDark
+                            radius: Theme.radiusSmall
+                        }
+                    }
+                }
+
+                // Ширина
+                Column {
+                    spacing: 4
+                    Label {
+                        text: "Ш"
+                        font.pixelSize: Theme.fontSizeSmall
+                        color: Theme.textSecondary
+                    }
+                    SpinBox {
+                        id: widthSpinBox
+                        from: 20
+                        to: 1000
+                        stepSize: 10
+                        value: {
+                            var item = getSelectedItem()
+                            return item ? item.width : 80
+                        }
+                        property bool updating: false
+                        onValueChanged: {
+                            if (!updating && selectedIndex >= 0) {
+                                var item = getSelectedItem()
+                                if (item && value !== item.width) {
+                                    setSelectedProperty("width", value)
+                                }
+                            }
+                        }
+                        Component.onCompleted: {
+                            page.selectedIndexChanged.connect(function() {
+                                updating = true
+                                var item = getSelectedItem()
+                                if (item) value = item.width
+                                updating = false
+                            })
+                        }
+                        background: Rectangle {
+                            color: Theme.surfaceDark
+                            radius: Theme.radiusSmall
+                        }
+                    }
+                }
+
+                // Высота
+                Column {
+                    spacing: 4
+                    Label {
+                        text: "В"
+                        font.pixelSize: Theme.fontSizeSmall
+                        color: Theme.textSecondary
+                    }
+                    SpinBox {
+                        id: heightSpinBox
+                        from: 20
+                        to: 1000
+                        stepSize: 10
+                        value: {
+                            var item = getSelectedItem()
+                            return item ? item.height : 80
+                        }
+                        property bool updating: false
+                        onValueChanged: {
+                            if (!updating && selectedIndex >= 0) {
+                                var item = getSelectedItem()
+                                if (item && value !== item.height) {
+                                    setSelectedProperty("height", value)
+                                }
+                            }
+                        }
+                        Component.onCompleted: {
+                            page.selectedIndexChanged.connect(function() {
+                                updating = true
+                                var item = getSelectedItem()
+                                if (item) value = item.height
+                                updating = false
+                            })
+                        }
+                        background: Rectangle {
+                            color: Theme.surfaceDark
+                            radius: Theme.radiusSmall
+                        }
+                    }
+                }
+
+                // Поворот
+                Column {
+                    spacing: 4
+                    Label {
+                        text: "°"
+                        font.pixelSize: Theme.fontSizeSmall
+                        color: Theme.textSecondary
+                    }
+                    SpinBox {
+                        id: rotationSpinBox
+                        from: -360
+                        to: 360
+                        stepSize: 15
+                        value: {
+                            var item = getSelectedItem()
+                            return item ? item.rotation : 0
+                        }
+                        property bool updating: false
+                        onValueChanged: {
+                            if (!updating && selectedIndex >= 0) {
+                                var item = getSelectedItem()
+                                if (item && value !== item.rotation) {
+                                    setSelectedProperty("rotation", value)
+                                }
+                            }
+                        }
+                        Component.onCompleted: {
+                            page.selectedIndexChanged.connect(function() {
+                                updating = true
+                                var item = getSelectedItem()
+                                if (item) value = item.rotation
+                                updating = false
+                            })
+                        }
+                        background: Rectangle {
+                            color: Theme.surfaceDark
+                            radius: Theme.radiusSmall
+                        }
+                    }
+                }
+            }
+
+            // Быстрые кнопки
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: Theme.spacingSmall
+
+                Button {
+                    text: Theme.iconRotateLeft + " -15°"
+                    Layout.fillWidth: true
+                    background: Rectangle {
+                        color: Theme.surfaceDark
+                        radius: Theme.radiusSmall
+                    }
+                    contentItem: Text {
+                        text: parent.text
+                        color: Theme.textPrimary
+                        font.pixelSize: Theme.fontSizeSmall
+                        horizontalAlignment: Text.AlignHCenter
+                    }
+                    onClicked: modifySelected("rotation", -15)
+                }
+
+                Button {
+                    text: Theme.iconRotateRight + " +15°"
+                    Layout.fillWidth: true
+                    background: Rectangle {
+                        color: Theme.surfaceDark
+                        radius: Theme.radiusSmall
+                    }
+                    contentItem: Text {
+                        text: parent.text
+                        color: Theme.textPrimary
+                        font.pixelSize: Theme.fontSizeSmall
+                        horizontalAlignment: Text.AlignHCenter
+                    }
+                    onClicked: modifySelected("rotation", 15)
+                }
+
+                Button {
+                    text: Theme.iconRotateLeft + " -45°"
+                    Layout.fillWidth: true
+                    background: Rectangle {
+                        color: Theme.surfaceDark
+                        radius: Theme.radiusSmall
+                    }
+                    contentItem: Text {
+                        text: parent.text
+                        color: Theme.textPrimary
+                        font.pixelSize: Theme.fontSizeSmall
+                        horizontalAlignment: Text.AlignHCenter
+                    }
+                    onClicked: modifySelected("rotation", -45)
+                }
+
+                Button {
+                    text: Theme.iconRotateRight + " +45°"
+                    Layout.fillWidth: true
+                    background: Rectangle {
+                        color: Theme.surfaceDark
+                        radius: Theme.radiusSmall
+                    }
+                    contentItem: Text {
+                        text: parent.text
+                        color: Theme.textPrimary
+                        font.pixelSize: Theme.fontSizeSmall
+                        horizontalAlignment: Text.AlignHCenter
+                    }
+                    onClicked: modifySelected("rotation", 45)
+                }
+            }
+        }
+
+        Behavior on height {
+            NumberAnimation { duration: 200; easing.type: Easing.OutCubic }
+        }
     }
 
-    // 4. МЕНЮ ДОБАВЛЕНИЯ (Drawer)
-    Drawer {
+    // 3. FAB - Кнопка "Добавить" (Скрываем, если открыта панель свойств или drawer)
+    Rectangle {
+        id: fabButton
+        width: 56
+        height: 56
+        radius: 28
+        color: Theme.accent
+        anchors.bottom: parent.bottom
+        anchors.right: parent.right
+        anchors.bottomMargin: propertiesPanel.visible ? propertiesPanel.height + 16 : (addDrawer.isOpen ? addDrawer.height + 16 : 16)
+        anchors.rightMargin: 16
+        visible: page.selectedIndex === -1 && !addDrawer.isOpen
+        z: 1000
+        
+        // Профессиональная тень для FAB
+        Rectangle {
+            anchors.fill: parent
+            anchors.margins: -2
+            z: -1
+            color: "#40000000"
+            radius: parent.radius + 2
+        }
+        
+        Text {
+            text: Theme.iconAdd
+            font.pixelSize: 28
+            color: "white"
+            anchors.centerIn: parent
+        }
+        
+        MouseArea {
+            id: fabMouseArea
+            anchors.fill: parent
+            onClicked: addDrawer.open()
+            
+            states: [
+                State {
+                    name: "pressed"
+                    when: fabMouseArea.pressed
+                    PropertyChanges { target: fabButton; scale: 0.9 }
+                }
+            ]
+        }
+        
+        Behavior on scale {
+            NumberAnimation { duration: 150 }
+        }
+        
+        Behavior on anchors.bottomMargin {
+            NumberAnimation { duration: 200; easing.type: Easing.OutCubic }
+        }
+    }
+
+    // 4. МЕНЮ ДОБАВЛЕНИЯ (Drawer) - Исправленная версия
+    Rectangle {
         id: addDrawer
         width: parent.width
-        height: 350 // Повыше, чтобы всё влезло
-        edge: Qt.BottomEdge
+        height: Math.min(500, parent.height * 0.7)
+        anchors.bottom: parent.bottom
+        anchors.left: parent.left
+        anchors.right: parent.right
+        color: Theme.surface
+        z: 1500
+        visible: false
+        
+        // Скругление сверху
+        Rectangle {
+            anchors.top: parent.top
+            anchors.left: parent.left
+            anchors.right: parent.right
+            height: Theme.radiusLarge
+            color: parent.color
+        }
+        
+        // Тень сверху
+        Rectangle {
+            anchors.top: parent.top
+            anchors.left: parent.left
+            anchors.right: parent.right
+            height: 12
+            z: -1
+            gradient: Gradient {
+                GradientStop { position: 0.0; color: "#20000000" }
+                GradientStop { position: 1.0; color: "transparent" }
+            }
+        }
+        
+        property bool isOpen: false
+        
+        function open() {
+            isOpen = true
+            visible = true
+        }
+        
+        function close() {
+            isOpen = false
+            visible = false
+        }
+        
+        y: isOpen ? parent.height - height : parent.height
 
-        background: Rectangle { color: "white"; radius: 16 }
+        Behavior on y {
+            NumberAnimation { duration: 300; easing.type: Easing.OutCubic }
+        }
+        
+        // Затемнение фона
+        Rectangle {
+            anchors.fill: parent.parent
+            color: "#80000000"
+            z: -2
+            visible: addDrawer.isOpen
+            opacity: addDrawer.isOpen ? 1 : 0
+            MouseArea {
+                anchors.fill: parent
+                onClicked: addDrawer.close()
+            }
+            Behavior on opacity {
+                NumberAnimation { duration: 300 }
+            }
+        }
 
         ColumnLayout {
             anchors.fill: parent
-            anchors.margins: 20
-            spacing: 15
+            anchors.margins: Theme.spacingMedium
+            spacing: Theme.spacingMedium
 
-            Label { text: "Добавить объект"; font.bold: true; font.pixelSize: 18; Layout.alignment: Qt.AlignHCenter }
-
-            GridLayout {
-                columns: 3
-                columnSpacing: 10
-                rowSpacing: 10
+            // Заголовок
+            RowLayout {
                 Layout.fillWidth: true
+                
+                Text {
+                    text: Theme.iconAdd
+                    font.pixelSize: 28
+                    color: Theme.textPrimary
+                }
+                
+                Label { 
+                    text: "Добавить объект"
+                    font.bold: true
+                    font.pixelSize: Theme.fontSizeLarge
+                    color: Theme.textPrimary
+                    Layout.fillWidth: true
+                }
+                
+                ToolButton {
+                    width: 40
+                    height: 40
+                    Text {
+                        text: Theme.iconClose
+                        font.pixelSize: 24
+                        color: Theme.textSecondary
+                        anchors.centerIn: parent
+                    }
+                    onClicked: addDrawer.close()
+                }
+            }
+            
+            Rectangle {
+                Layout.fillWidth: true
+                height: 1
+                color: Theme.divider
+            }
 
-                // ГЕНЕРАТОР КНОПОК
+            ScrollView {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                clip: true
+                
+                GridLayout {
+                    width: addDrawer.width - Theme.spacingMedium * 2
+                    columns: 2
+                    columnSpacing: Theme.spacingSmall
+                    rowSpacing: Theme.spacingSmall
+
                 // Столы
-                Button { text: "Стол (Круг)"; Layout.fillWidth: true; onClicked: { addItem("table", 80, 80, "", "ellipse", "#FFF59D"); addDrawer.close() } }
-                Button { text: "Стол (Кв)"; Layout.fillWidth: true; onClicked: { addItem("table", 80, 80, "", "rect", "#FFF59D"); addDrawer.close() } }
-
-                // Помещения
-                Button { text: "Пол (Зал)"; Layout.fillWidth: true; onClicked: { addItem("room", 400, 300, "Main Hall", "rect", "#FFFFFF"); addDrawer.close() } }
+                Button { 
+                    text: Theme.iconTable + "\nСтол (Круг)"
+                    Layout.fillWidth: true
+                        Layout.preferredHeight: 90
+                    background: Rectangle {
+                        color: Theme.primaryLight
+                        radius: Theme.radiusMedium
+                            border.width: 1
+                            border.color: Theme.divider
+                    }
+                    contentItem: Text {
+                        text: parent.text
+                        color: Theme.textPrimary
+                        font.pixelSize: Theme.fontSizeMedium
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                    }
+                        onClicked: { addItem("table", 50, 50, "", "ellipse", "#FFF59D"); addDrawer.close() } 
+                }
+                
+                Button { 
+                    text: Theme.iconTable + "\nСтол (Квадрат)"
+                    Layout.fillWidth: true
+                        Layout.preferredHeight: 90
+                    background: Rectangle {
+                        color: Theme.primaryLight
+                        radius: Theme.radiusMedium
+                            border.width: 1
+                            border.color: Theme.divider
+                    }
+                    contentItem: Text {
+                        text: parent.text
+                        color: Theme.textPrimary
+                        font.pixelSize: Theme.fontSizeMedium
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                    }
+                        onClicked: { addItem("table", 50, 50, "", "rect", "#FFF59D"); addDrawer.close() } 
+                }
+                
+                // Комната (пол)
+                Button { 
+                    text: "🏢\nКомната"
+                    Layout.fillWidth: true
+                        Layout.preferredHeight: 90
+                    background: Rectangle {
+                        color: Theme.surfaceDark
+                        radius: Theme.radiusMedium
+                            border.width: 1
+                            border.color: Theme.divider
+                    }
+                    contentItem: Text {
+                        text: parent.text
+                        color: Theme.textPrimary
+                        font.pixelSize: Theme.fontSizeMedium
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                    }
+                    onClicked: { addItem("room", 400, 300, "Зал", "rect", "#F5F5F5"); addDrawer.close() } 
+                }
 
                 // Стены и окна
-                Button { text: "Стена"; Layout.fillWidth: true; onClicked: { addItem("wall", 150, 10, "", "rect", "#424242"); addDrawer.close() } }
-                Button { text: "Окно"; Layout.fillWidth: true; onClicked: { addItem("window", 100, 15, "", "rect", "#81D4FA"); addDrawer.close() } }
+                Button { 
+                    text: "🧱\nСтена"
+                    Layout.fillWidth: true
+                        Layout.preferredHeight: 90
+                    background: Rectangle {
+                        color: Theme.surfaceDark
+                        radius: Theme.radiusMedium
+                            border.width: 1
+                            border.color: Theme.divider
+                    }
+                    contentItem: Text {
+                        text: parent.text
+                        color: Theme.textPrimary
+                        font.pixelSize: Theme.fontSizeMedium
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                    }
+                    onClicked: { addItem("wall", 150, 10, "", "rect", "#424242"); addDrawer.close() } 
+                }
+                
+                Button { 
+                    text: "🪟\nОкно"
+                    Layout.fillWidth: true
+                        Layout.preferredHeight: 90
+                    background: Rectangle {
+                        color: Theme.surfaceDark
+                        radius: Theme.radiusMedium
+                            border.width: 1
+                            border.color: Theme.divider
+                    }
+                    contentItem: Text {
+                        text: parent.text
+                        color: Theme.textPrimary
+                        font.pixelSize: Theme.fontSizeMedium
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                    }
+                    onClicked: { addItem("window", 100, 15, "", "rect", "#81D4FA"); addDrawer.close() } 
+                }
 
                 // Прочее
-                Button { text: "WC"; Layout.fillWidth: true; onClicked: { addItem("wc", 60, 60, "WC", "rect", "#FFFFFF"); addDrawer.close() } }
-                Button { text: "Декор 🌿"; Layout.fillWidth: true; onClicked: { addItem("plant", 50, 50, "", "rect", "transparent"); addDrawer.close() } }
+                Button { 
+                    text: "🚻\nWC"
+                    Layout.fillWidth: true
+                        Layout.preferredHeight: 90
+                    background: Rectangle {
+                        color: Theme.surfaceDark
+                        radius: Theme.radiusMedium
+                            border.width: 1
+                            border.color: Theme.divider
+                    }
+                    contentItem: Text {
+                        text: parent.text
+                        color: Theme.textPrimary
+                        font.pixelSize: Theme.fontSizeMedium
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                    }
+                        onClicked: { addItem("wc", 50, 50, "WC", "rect", "#FFFFFF"); addDrawer.close() } 
+                }
+                
+                Button { 
+                    text: "🌿\nДекор"
+                    Layout.fillWidth: true
+                        Layout.preferredHeight: 90
+                    background: Rectangle {
+                        color: Theme.surfaceDark
+                        radius: Theme.radiusMedium
+                            border.width: 1
+                            border.color: Theme.divider
+                    }
+                    contentItem: Text {
+                        text: parent.text
+                        color: Theme.textPrimary
+                        font.pixelSize: Theme.fontSizeMedium
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                    }
+                        onClicked: { addItem("plant", 40, 40, "", "rect", "transparent"); addDrawer.close() } 
+                    }
+                }
             }
         }
     }

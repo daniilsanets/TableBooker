@@ -1,12 +1,16 @@
 import QtQuick
-import QtQuick.Controls // <--- Нужно для StackView и Controls
+import QtQuick.Controls
+import QtQuick.Controls.Material
 import "ui"
 
-Window {
+ApplicationWindow {
     width: 360
     height: 640
     visible: true
     title: qsTr("TableBooker")
+    
+    Material.theme: Material.Light
+    Material.accent: Material.Blue
 
     StackView {
         id: stackView
