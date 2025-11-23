@@ -108,7 +108,15 @@ Page {
         return null
     }
 
-    Component.onCompleted: loadTables()
+    Component.onCompleted: {
+        loadTables()
+        // Центрируем на объектах после загрузки
+        Qt.callLater(function() {
+            if (tablesModel.count > 0 && hallView.centerOnObjects) {
+                hallView.centerOnObjects()
+            }
+        })
+    }
 
     // --- ИНТЕРФЕЙС ---
 

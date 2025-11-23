@@ -50,11 +50,15 @@ Item {
         contentWidth: contentContainer.width * scaleFactor
         contentHeight: contentContainer.height * scaleFactor
 
-        // Начальная позиция скролла (центр) - с задержкой для правильной инициализации
+        // Начальная позиция скролла будет установлена через centerOnObjects
         Component.onCompleted: {
             Qt.callLater(function() {
-                contentX = (contentWidth - width) / 2
-                contentY = (contentHeight - height) / 2
+                if (hallRoot.centerOnObjects) {
+                    hallRoot.centerOnObjects()
+                } else {
+                    contentX = (contentWidth - width) / 2
+                    contentY = (contentHeight - height) / 2
+                }
             })
         }
 
@@ -138,8 +142,14 @@ Item {
                     onMoved: (nx, ny) => { model.x = nx; model.y = ny }
                     onResized: (nw, nh) => { model.width = nw; model.height = nh }
 
-                    // Исправлено: Передаем index модели
-                    onClicked: hallRoot.tableClicked(index, model.dbId)
+                    // Исправлено: Передаем index модели только для столов
+                    onClicked: {
+                        // В режиме редактирования - все элементы кликабельны
+                        // В режиме бронирования - только столы
+                        if (hallRoot.editMode || model.type === "table") {
+                            hallRoot.tableClicked(index, model.dbId)
+                        }
+                    }
                 }
             }
         }
@@ -149,24 +159,28 @@ Item {
             onActiveChanged: flickable.interactive = !active
             onScaleChanged: (delta) => {
                 var newScale = flickable.scaleFactor * delta
-                flickable.scaleFactor = Math.min(Math.max(0.5, newScale), 2.0)
+                var clampedScale = Math.min(Math.max(0.5, newScale), 2.0)
+                flickable.scaleFactor = clampedScale
+                // Синхронизируем слайдер
+                if (Math.abs(zoomSlider.value - clampedScale) > 0.05) {
+                    zoomSlider.value = clampedScale
+                }
             }
         }
     }
 
-    // Панель управления зумом
+    // Панель управления зумом с слайдером
     Rectangle {
         anchors.right: parent.right
         anchors.top: parent.top
         anchors.margins: 12
-        width: 120
-        height: 40
+        width: 200
+        height: hallRoot.editMode ? 120 : 80
         color: Theme.surface
         radius: Theme.radiusSmall
         border.width: 1
         border.color: Theme.divider
         z: 1000
-        visible: hallRoot.editMode
         
         // Тень
         Rectangle {
@@ -178,109 +192,189 @@ Item {
             opacity: 0.15
         }
         
-        Row {
-            anchors.centerIn: parent
+        Column {
+            anchors.fill: parent
+            anchors.margins: 8
             spacing: 8
             
-            // Кнопка уменьшения
-            Rectangle {
-                width: 32
-                height: 32
-                radius: 4
-                color: zoomOutMouse.pressed ? Theme.surfaceDark : "transparent"
-                Text {
-                    text: "−"
-                    font.pixelSize: 20
-                    font.bold: true
-                    color: Theme.textPrimary
-                    anchors.centerIn: parent
-                }
-                MouseArea {
-                    id: zoomOutMouse
-                    anchors.fill: parent
-                    onClicked: {
-                        var newScale = Math.max(0.5, flickable.scaleFactor - 0.25)
-                        flickable.scaleFactor = newScale
+            // Слайдер зума
+            Column {
+                width: parent.width
+                spacing: 4
+                
+                Row {
+                    width: parent.width
+                    spacing: 8
+                    
+                    Text {
+                        text: "−"
+                        font.pixelSize: 18
+                        font.bold: true
+                        color: Theme.textPrimary
+                        width: 24
+                        horizontalAlignment: Text.AlignHCenter
+                        anchors.verticalCenter: parent.verticalCenter
+                    }
+                    
+                    Slider {
+                        id: zoomSlider
+                        width: parent.width - 60
+                        from: 0.5
+                        to: 2.0
+                        value: flickable.scaleFactor
+                        stepSize: 0.1
+                        onValueChanged: {
+                            flickable.scaleFactor = value
+                        }
+                        
+                        background: Rectangle {
+                            x: zoomSlider.leftPadding
+                            y: zoomSlider.topPadding + zoomSlider.availableHeight / 2 - height / 2
+                            implicitWidth: 200
+                            implicitHeight: 4
+                            width: zoomSlider.availableWidth
+                            height: implicitHeight
+                            radius: 2
+                            color: Theme.surfaceDark
+                            
+                            Rectangle {
+                                width: zoomSlider.visualPosition * parent.width
+                                height: parent.height
+                                color: Theme.primary
+                                radius: 2
+                            }
+                        }
+                        
+                        handle: Rectangle {
+                            x: zoomSlider.leftPadding + zoomSlider.visualPosition * (zoomSlider.availableWidth - width)
+                            y: zoomSlider.topPadding + zoomSlider.availableHeight / 2 - height / 2
+                            implicitWidth: 20
+                            implicitHeight: 20
+                            radius: 10
+                            color: zoomSlider.pressed ? Theme.primaryDark : Theme.primary
+                            border.color: "white"
+                            border.width: 2
+                        }
+                    }
+                    
+                    Text {
+                        text: "+"
+                        font.pixelSize: 18
+                        font.bold: true
+                        color: Theme.textPrimary
+                        width: 24
+                        horizontalAlignment: Text.AlignHCenter
+                        anchors.verticalCenter: parent.verticalCenter
                     }
                 }
-            }
-            
-            // Индикатор зума
-            Text {
-                text: Math.round(flickable.scaleFactor * 100) + "%"
-                font.pixelSize: Theme.fontSizeSmall
-                color: Theme.textPrimary
-                width: 40
-                horizontalAlignment: Text.AlignHCenter
-                anchors.verticalCenter: parent.verticalCenter
-            }
-            
-            // Кнопка увеличения
-            Rectangle {
-                width: 32
-                height: 32
-                radius: 4
-                color: zoomInMouse.pressed ? Theme.surfaceDark : "transparent"
+                
+                // Индикатор зума
                 Text {
-                    text: "+"
-                    font.pixelSize: 20
+                    text: Math.round(flickable.scaleFactor * 100) + "%"
+                    font.pixelSize: Theme.fontSizeSmall
                     font.bold: true
                     color: Theme.textPrimary
-                    anchors.centerIn: parent
-                }
-                MouseArea {
-                    id: zoomInMouse
-                    anchors.fill: parent
-                    onClicked: {
-                        var newScale = Math.min(2.0, flickable.scaleFactor + 0.25)
-                        flickable.scaleFactor = newScale
-                    }
+                    width: parent.width
+                    horizontalAlignment: Text.AlignHCenter
                 }
             }
             
-            // Кнопка сброса
-            Rectangle {
-                width: 32
-                height: 32
-                radius: 4
-                color: resetMouse.pressed ? Theme.surfaceDark : "transparent"
-                Text {
+            // Кнопки управления (только для режима редактирования)
+            Row {
+                width: parent.width
+                spacing: 8
+                visible: hallRoot.editMode
+                
+                Button {
                     text: "⌂"
-                    font.pixelSize: 16
-                    color: Theme.textPrimary
-                    anchors.centerIn: parent
-                }
-                MouseArea {
-                    id: resetMouse
-                    anchors.fill: parent
+                    width: (parent.width - 8) / 2
+                    height: 32
+                    background: Rectangle {
+                        color: parent.pressed ? Theme.surfaceDark : Theme.surface
+                        radius: Theme.radiusSmall
+                        border.color: Theme.divider
+                        border.width: 1
+                    }
+                    contentItem: Text {
+                        text: parent.text
+                        color: Theme.textPrimary
+                        font.pixelSize: Theme.fontSizeSmall
+                        horizontalAlignment: Text.AlignHCenter
+                    }
                     onClicked: {
                         flickable.scaleFactor = 1.0
-                        flickable.contentX = (flickable.contentWidth - flickable.width) / 2
-                        flickable.contentY = (flickable.contentHeight - flickable.height) / 2
+                        centerOnObjects()
+                    }
+                }
+                
+                Button {
+                    text: "Центр"
+                    width: (parent.width - 8) / 2
+                    height: 32
+                    background: Rectangle {
+                        color: parent.pressed ? Theme.surfaceDark : Theme.surface
+                        radius: Theme.radiusSmall
+                        border.color: Theme.divider
+                        border.width: 1
+                    }
+                    contentItem: Text {
+                        text: parent.text
+                        color: Theme.textPrimary
+                        font.pixelSize: Theme.fontSizeSmall
+                        horizontalAlignment: Text.AlignHCenter
+                    }
+                    onClicked: {
+                        centerOnObjects()
                     }
                 }
             }
         }
     }
     
-    // Кнопка сброса зума для режима просмотра
-    Button {
-        text: Math.round(flickable.scaleFactor * 100) + "%"
-        anchors.right: parent.right
-        anchors.top: parent.top
-        anchors.margins: 10
-        visible: !hallRoot.editMode && flickable.scaleFactor !== 1.0
-        onClicked: {
-            flickable.scaleFactor = 1.0
+    // Синхронизация слайдера с зумом
+    Connections {
+        target: flickable
+        function onScaleFactorChanged() {
+            if (Math.abs(zoomSlider.value - flickable.scaleFactor) > 0.05) {
+                zoomSlider.value = flickable.scaleFactor
+            }
+        }
+    }
+    
+    // Функция центрирования на объектах
+    function centerOnObjects() {
+        if (!tablesModel || tablesModel.count === 0) {
+            flickable.contentX = (flickable.contentWidth - flickable.width) / 2
+            flickable.contentY = (flickable.contentHeight - flickable.height) / 2
+            return
+        }
+        
+        // Находим границы всех объектов (или только столов для пользователя)
+        var minX = 999999, minY = 999999, maxX = 0, maxY = 0
+        var hasObjects = false
+        
+        for (var i = 0; i < tablesModel.count; i++) {
+            var item = tablesModel.get(i)
+            // Для пользователя - только столы, для админа - все объекты
+            if (editMode || item.type === "table") {
+                minX = Math.min(minX, item.x)
+                minY = Math.min(minY, item.y)
+                maxX = Math.max(maxX, item.x + item.width)
+                maxY = Math.max(maxY, item.y + item.height)
+                hasObjects = true
+            }
+        }
+        
+        if (hasObjects) {
+            var centerX = (minX + maxX) / 2
+            var centerY = (minY + maxY) / 2
+            var scale = flickable.scaleFactor || 1.0
+            
+            flickable.contentX = centerX * scale - flickable.width / 2
+            flickable.contentY = centerY * scale - flickable.height / 2
+        } else {
             flickable.contentX = (flickable.contentWidth - flickable.width) / 2
             flickable.contentY = (flickable.contentHeight - flickable.height) / 2
         }
-        background: Rectangle { 
-            color: Theme.surface
-            radius: Theme.radiusSmall
-            border.width: 1
-            border.color: Theme.divider
-        }
-        z: 1000
     }
 }

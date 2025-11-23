@@ -94,23 +94,9 @@ Page {
             function onCountChanged() {
                 if (tablesModel.count > 0) {
                     Qt.callLater(function() {
-                        // Находим центр всех столов
-                        var minX = 999999, minY = 999999, maxX = 0, maxY = 0
-                        for (var i = 0; i < tablesModel.count; i++) {
-                            var t = tablesModel.get(i)
-                            minX = Math.min(minX, t.x)
-                            minY = Math.min(minY, t.y)
-                            maxX = Math.max(maxX, t.x + t.width)
-                            maxY = Math.max(maxY, t.y + t.height)
-                        }
-                        var centerX = (minX + maxX) / 2
-                        var centerY = (minY + maxY) / 2
-                        
-                        // Используем функцию ensureItemVisible или напрямую обращаемся к flickable
-                        // Прокручиваем к центру через функцию компонента
-                        if (hallView.ensureItemVisible) {
-                            // Если есть функция, используем её для первого элемента
-                            hallView.ensureItemVisible(0)
+                        // Используем функцию центрирования на объектах
+                        if (hallView.centerOnObjects) {
+                            hallView.centerOnObjects()
                         }
                     })
                 }
@@ -120,13 +106,8 @@ Page {
         Component.onCompleted: {
             // Центрируем после загрузки данных
             Qt.callLater(function() {
-                if (tablesModel.count > 0) {
-                    // Используем стандартную позицию центра холла
-                    var flick = hallView.children[0]
-                    if (flick && flick.contentWidth > 0) {
-                        flick.contentX = (flick.contentWidth - flick.width) / 2
-                        flick.contentY = (flick.contentHeight - flick.height) / 2
-                    }
+                if (tablesModel.count > 0 && hallView.centerOnObjects) {
+                    hallView.centerOnObjects()
                 }
             })
         }

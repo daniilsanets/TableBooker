@@ -14,10 +14,37 @@ Page {
     }
 
     // Модель данных
-    property var premisesList: []
+    property var allPremises: []
+    property var filteredPremises: []
+    property string searchText: ""
+    property int sortMode: 0 // 0 - по имени, 1 - по имени (обратно)
 
     function loadData() {
-        premisesList = BackendApi.getAllPremises()
+        allPremises = BackendApi.getAllPremises()
+        applyFilters()
+    }
+    
+    function applyFilters() {
+        var filtered = []
+        
+        // Поиск
+        for (var i = 0; i < allPremises.length; i++) {
+            var premise = allPremises[i]
+            if (searchText === "" || premise.name.toLowerCase().indexOf(searchText.toLowerCase()) !== -1) {
+                filtered.push(premise)
+            }
+        }
+        
+        // Сортировка
+        filtered.sort(function(a, b) {
+            if (sortMode === 0) {
+                return a.name.localeCompare(b.name)
+            } else {
+                return b.name.localeCompare(a.name)
+            }
+        })
+        
+        filteredPremises = filtered
     }
 
     Component.onCompleted: loadData()
@@ -63,22 +90,91 @@ Page {
         anchors.fill: parent
         spacing: 0
 
-        // Заголовок секции
+        // Поиск и сортировка
         Rectangle {
             Layout.fillWidth: true
-            Layout.topMargin: Theme.spacingMedium
-            Layout.leftMargin: Theme.spacingMedium
-            Layout.rightMargin: Theme.spacingMedium
-            height: 40
+            Layout.topMargin: 16
+            Layout.leftMargin: 16
+            Layout.rightMargin: 16
+            Layout.bottomMargin: 8
+            height: 100
             color: "transparent"
             
-            Text {
-                text: "Где хотите поесть?"
-                font.pixelSize: Theme.fontSizeLarge
-                font.bold: true
-                color: Theme.textPrimary
-                anchors.left: parent.left
-                anchors.verticalCenter: parent.verticalCenter
+            Column {
+                anchors.fill: parent
+                spacing: 8
+                
+                // Поле поиска
+                Rectangle {
+                    width: parent.width
+                    height: 48
+                    color: Theme.surface
+                    radius: Theme.radiusSmall
+                    border.color: searchField.activeFocus ? Theme.primary : Theme.divider
+                    border.width: searchField.activeFocus ? 2 : 1
+                    
+                    Row {
+                        anchors.fill: parent
+                        anchors.leftMargin: 16
+                        anchors.rightMargin: 16
+                        spacing: 12
+                        
+                        Text {
+                            text: Theme.iconSearch
+                            font.pixelSize: 20
+                            color: Theme.textSecondary
+                            anchors.verticalCenter: parent.verticalCenter
+                        }
+                        
+                        TextField {
+                            id: searchField
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: parent.width - 40
+                            placeholderText: "Поиск заведений..."
+                            background: Item {}
+                            font.pixelSize: Theme.fontSizeMedium
+                            color: Theme.textPrimary
+                            onTextChanged: {
+                                userPremisesPage.searchText = text
+                                userPremisesPage.applyFilters()
+                            }
+                        }
+                    }
+                }
+                
+                // Кнопка сортировки
+                Row {
+                    spacing: 8
+                    
+                    Button {
+                        text: sortMode === 0 ? "А-Я" : "Я-А"
+                        height: 32
+                        width: 80
+                        background: Rectangle {
+                            color: parent.pressed ? Theme.surfaceDark : Theme.surface
+                            radius: Theme.radiusSmall
+                            border.color: Theme.divider
+                            border.width: 1
+                        }
+                        contentItem: Text {
+                            text: parent.text
+                            color: Theme.textPrimary
+                            font.pixelSize: Theme.fontSizeSmall
+                            horizontalAlignment: Text.AlignHCenter
+                        }
+                        onClicked: {
+                            userPremisesPage.sortMode = userPremisesPage.sortMode === 0 ? 1 : 0
+                            userPremisesPage.applyFilters()
+                        }
+                    }
+                    
+                    Text {
+                        text: "Найдено: " + filteredPremises.length
+                        font.pixelSize: Theme.fontSizeSmall
+                        color: Theme.textSecondary
+                        anchors.verticalCenter: parent.verticalCenter
+                    }
+                }
             }
         }
 
@@ -88,8 +184,8 @@ Page {
             Layout.fillWidth: true
             Layout.fillHeight: true
             clip: true
-            model: premisesList
-            spacing: Theme.spacingMedium
+            model: filteredPremises
+            spacing: 12
             
             delegate: Rectangle {
                 width: listView.width - Theme.spacingMedium * 2
