@@ -19,6 +19,8 @@ Dialog {
         radius: Theme.radiusLarge
     }
 
+    signal bookingCreated()
+
     // Свойства, которые мы передадим при открытии
     property int tableId: -1
     property string tableName: "?"
@@ -244,6 +246,16 @@ Dialog {
         errorLabel.visible = true
     }
 
+    function prefill(dateValue, startTimeValue, endTimeValue) {
+        if (dateValue && dateValue.length === 10)
+            dateField.text = dateValue
+        if (startTimeValue && startTimeValue.length === 5)
+            startTimeField.text = startTimeValue
+        if (endTimeValue && endTimeValue.length === 5)
+            endTimeField.text = endTimeValue
+        errorLabel.visible = false
+    }
+
     function validateAndSend()
     {
         var dateString = dateField.text + " " + startTimeField.text;
@@ -296,6 +308,7 @@ Dialog {
             startTimeField.text = "18:00"
             endTimeField.text = "20:00"
             errorLabel.visible = false
+            root.bookingCreated()
             root.close() // Закрываем окно сами
         } else {
             showError("Ошибка: Возможно, это время уже занято или произошла ошибка сервера")

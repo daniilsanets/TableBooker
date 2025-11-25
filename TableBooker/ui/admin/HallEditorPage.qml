@@ -658,23 +658,6 @@ Page {
             NumberAnimation { duration: 300; easing.type: Easing.OutCubic }
         }
         
-        // Прозрачная зона для закрытия по клику вне карточки (не перекрывает сам drawer)
-        Rectangle {
-            id: overlay
-            parent: page
-            anchors.top: parent.top
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.bottom: addDrawer.top
-            color: "transparent"
-            z: 1499
-            visible: addDrawer.isOpen
-            MouseArea {
-                anchors.fill: parent
-                onClicked: addDrawer.close()
-            }
-        }
-
         ColumnLayout {
             anchors.fill: parent
             anchors.margins: Theme.spacingMedium
@@ -901,6 +884,21 @@ Page {
                     }
                 }
             }
+        }
+    }
+
+    // Прозрачная зона для закрытия по клику вне карточки (отдельным слоем поверх страницы)
+    Rectangle {
+        anchors.top: parent.top
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: addDrawer.top
+        color: "transparent"
+        z: 1499
+        visible: addDrawer.isOpen
+        MouseArea {
+            anchors.fill: parent
+            onClicked: addDrawer.close()
         }
     }
 }

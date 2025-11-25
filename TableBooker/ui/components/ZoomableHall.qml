@@ -12,6 +12,16 @@ Item {
     property int selectedIndex: -1 // Индекс выделенного элемента (синхронизируется с родителем)
     property bool skipCenterOnZoom: false
 
+    onEditModeChanged: {
+        if (flickable) {
+            flickable.scaleFactor = editMode ? 1.0 : 0.5
+            if (zoomSlider) {
+                zoomSlider.value = flickable.scaleFactor
+            }
+            Qt.callLater(function() { centerOnObjects() })
+        }
+    }
+
     // Сигналы
     signal tableModified(int id, int x, int y, int w, int h)
     signal tableClicked(int index, int dbId) // Изменили сигнатуру
@@ -65,7 +75,7 @@ Item {
             })
         }
 
-        property real scaleFactor: 1.0
+        property real scaleFactor: hallRoot.editMode ? 1.0 : 0.5
 
         Item {
             id: contentContainer
@@ -113,7 +123,10 @@ Item {
                 }
 
                 TapHandler {
-                    onTapped: hallRoot.canvasTapped()
+                    onTapped: {
+                        zoomPanel.visible = false
+                        hallRoot.canvasTapped()
+                    }
                 }
             }
 
