@@ -19,6 +19,8 @@ Item {
     signal clicked()
     signal moved(int newX, int newY)
     signal resized(int newW, int newH)
+    signal interactionStarted()
+    signal interactionEnded()
     // Вращение теперь меняется снаружи, но можно добавить логику и здесь
 
     // Важно: привязка размеров и вращения к свойствам Item
@@ -78,11 +80,11 @@ Item {
         drag.minimumY: 0
         hoverEnabled: true
         
-        onClicked: {
-            root.clicked()
-        }
+        onPressed: root.interactionStarted()
+        onClicked: root.clicked()
         
         onReleased: {
+            root.interactionEnded()
             if (root.isEditable) {
                 // Применяем сетку при отпускании (сетка 10px)
                 root.x = Math.round(root.x / 10) * 10
@@ -90,6 +92,8 @@ Item {
                 root.moved(root.x, root.y)
             }
         }
+
+        onCanceled: root.interactionEnded()
         
         onPositionChanged: {
             if (pressed && root.isEditable) {
@@ -136,6 +140,7 @@ Item {
             property real startMouseY: 0
             
             onPressed: (mouse) => {
+                root.interactionStarted()
                 startW = root.width
                 startH = root.height
                 startRootX = root.x
@@ -160,6 +165,9 @@ Item {
                     root.resized(newW, newH)
                 }
             }
+
+            onReleased: root.interactionEnded()
+            onCanceled: root.interactionEnded()
         }
     }
     

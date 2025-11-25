@@ -49,6 +49,7 @@ Page {
 
     // Умное добавление (адаптировано под мобилку)
     function addItem(itemType, w, h, namePrefix, shape, col) {
+        console.log("HallEditorPage.addItem called, type:", itemType, "current count:", tablesModel.count)
         // Генерируем имя
         var newName = namePrefix
         if (itemType === "table") {
@@ -67,9 +68,9 @@ Page {
             newName = "WC"
         }
 
-        // Добавляем в центр видимой области
-        var centerX = 1500
-        var centerY = 1500
+        // Пока упрощаем: добавляем в разумный центр сцены
+        var centerX = 1500 - w / 2
+        var centerY = 1500 - h / 2
 
         tablesModel.append({
             "dbId": -1, "name": newName,
@@ -81,6 +82,11 @@ Page {
         
         // Автоматически выбираем новый элемент
         selectedIndex = tablesModel.count - 1
+        console.log("HallEditorPage.addItem appended, new index:", selectedIndex, "total:", tablesModel.count)
+        Qt.callLater(function() {
+            if (hallView && hallView.ensureItemVisible)
+                hallView.ensureItemVisible(selectedIndex)
+        })
     }
 
     function modifySelected(param, value) {
@@ -652,21 +658,20 @@ Page {
             NumberAnimation { duration: 300; easing.type: Easing.OutCubic }
         }
         
-        // Затемнение фона - используем Overlay
+        // Прозрачная зона для закрытия по клику вне карточки (не перекрывает сам drawer)
         Rectangle {
             id: overlay
             parent: page
-            anchors.fill: parent
-            color: "#80000000"
+            anchors.top: parent.top
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.bottom: addDrawer.top
+            color: "transparent"
             z: 1499
             visible: addDrawer.isOpen
-            opacity: addDrawer.isOpen ? 1 : 0
             MouseArea {
                 anchors.fill: parent
                 onClicked: addDrawer.close()
-            }
-            Behavior on opacity {
-                NumberAnimation { duration: 300 }
             }
         }
 
@@ -741,7 +746,11 @@ Page {
                         horizontalAlignment: Text.AlignHCenter
                         verticalAlignment: Text.AlignVCenter
                     }
-                        onClicked: { addItem("table", 50, 50, "", "ellipse", "#FFF59D"); addDrawer.close() } 
+                    onClicked: { 
+                        console.log("Add button pressed: round table")
+                        addItem("table", 50, 50, "", "ellipse", "#FFF59D"); 
+                        addDrawer.close()
+                    } 
                 }
                 
                 Button { 
@@ -761,7 +770,11 @@ Page {
                         horizontalAlignment: Text.AlignHCenter
                         verticalAlignment: Text.AlignVCenter
                     }
-                        onClicked: { addItem("table", 50, 50, "", "rect", "#FFF59D"); addDrawer.close() } 
+                    onClicked: { 
+                        console.log("Add button pressed: square table")
+                        addItem("table", 50, 50, "", "rect", "#FFF59D"); 
+                        addDrawer.close()
+                    } 
                 }
                 
                 // Комната (пол)
@@ -782,7 +795,11 @@ Page {
                         horizontalAlignment: Text.AlignHCenter
                         verticalAlignment: Text.AlignVCenter
                     }
-                    onClicked: { addItem("room", 400, 300, "Зал", "rect", "#F5F5F5"); addDrawer.close() } 
+                    onClicked: { 
+                        console.log("Add button pressed: room")
+                        addItem("room", 400, 300, "Зал", "rect", "#F5F5F5"); 
+                        addDrawer.close() 
+                    } 
                 }
 
                 // Стены и окна
@@ -803,7 +820,11 @@ Page {
                         horizontalAlignment: Text.AlignHCenter
                         verticalAlignment: Text.AlignVCenter
                     }
-                    onClicked: { addItem("wall", 150, 10, "", "rect", "#424242"); addDrawer.close() } 
+                    onClicked: { 
+                        console.log("Add button pressed: wall")
+                        addItem("wall", 150, 10, "", "rect", "#424242"); 
+                        addDrawer.close() 
+                    } 
                 }
                 
                 Button { 
@@ -823,7 +844,11 @@ Page {
                         horizontalAlignment: Text.AlignHCenter
                         verticalAlignment: Text.AlignVCenter
                     }
-                    onClicked: { addItem("window", 100, 15, "", "rect", "#81D4FA"); addDrawer.close() } 
+                    onClicked: { 
+                        console.log("Add button pressed: window")
+                        addItem("window", 100, 15, "", "rect", "#81D4FA"); 
+                        addDrawer.close() 
+                    } 
                 }
 
                 // Прочее
@@ -844,7 +869,11 @@ Page {
                         horizontalAlignment: Text.AlignHCenter
                         verticalAlignment: Text.AlignVCenter
                     }
-                        onClicked: { addItem("wc", 50, 50, "WC", "rect", "#FFFFFF"); addDrawer.close() } 
+                    onClicked: { 
+                        console.log("Add button pressed: wc")
+                        addItem("wc", 50, 50, "WC", "rect", "#FFFFFF"); 
+                        addDrawer.close() 
+                    } 
                 }
                 
                 Button { 
@@ -864,7 +893,11 @@ Page {
                         horizontalAlignment: Text.AlignHCenter
                         verticalAlignment: Text.AlignVCenter
                     }
-                        onClicked: { addItem("plant", 40, 40, "", "rect", "transparent"); addDrawer.close() } 
+                    onClicked: { 
+                        console.log("Add button pressed: plant")
+                        addItem("plant", 40, 40, "", "rect", "transparent"); 
+                        addDrawer.close() 
+                    } 
                     }
                 }
             }

@@ -10,6 +10,7 @@ Item {
     property var tablesModel // Модель данных
     property bool editMode: false
     property int selectedIndex: -1 // Индекс выделенного элемента (синхронизируется с родителем)
+    property bool skipCenterOnZoom: false
 
     // Сигналы
     signal tableModified(int id, int x, int y, int w, int h)
@@ -144,6 +145,9 @@ Item {
                     onMoved: (nx, ny) => { model.x = nx; model.y = ny }
                     onResized: (nw, nh) => { model.width = nw; model.height = nh }
 
+                    onInteractionStarted: flickable.interactive = false
+                    onInteractionEnded: flickable.interactive = true
+
                     // Исправлено: Передаем index модели только для столов
                     onClicked: {
                         // В режиме редактирования - все элементы кликабельны
@@ -165,7 +169,9 @@ Item {
                 flickable.scaleFactor = clampedScale
                 // Синхронизируем слайдер
                 if (Math.abs(zoomSlider.value - clampedScale) > 0.05) {
+                    hallRoot.skipCenterOnZoom = true
                     zoomSlider.value = clampedScale
+                    hallRoot.skipCenterOnZoom = false
                 }
             }
         }
@@ -341,6 +347,9 @@ Item {
                             if (Math.abs(flickable.scaleFactor - value) > 0.01) {
                                 flickable.scaleFactor = value
                             }
+                            if (!hallRoot.skipCenterOnZoom) {
+                                hallRoot.centerOnObjects()
+                            }
                         }
                         
                         background: Rectangle {
@@ -468,7 +477,9 @@ Item {
         target: flickable
         function onScaleFactorChanged() {
             if (Math.abs(zoomSlider.value - flickable.scaleFactor) > 0.05) {
+                hallRoot.skipCenterOnZoom = true
                 zoomSlider.value = flickable.scaleFactor
+                hallRoot.skipCenterOnZoom = false
             }
         }
     }
@@ -508,5 +519,13 @@ Item {
             flickable.contentX = (flickable.contentWidth - flickable.width) / 2
             flickable.contentY = (flickable.contentHeight - flickable.height) / 2
         }
+    }
+
+    // Возвращаем координаты центра видимой области в системе холла
+    function viewportCenter() {
+        var scale = flickable.scaleFactor || 1.0
+        var centerX = (flickable.contentX + flickable.width / 2) / scale
+        var centerY = (flickable.contentY + flickable.height / 2) / scale
+        return { "x": centerX, "y": centerY }
     }
 }
