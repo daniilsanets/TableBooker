@@ -16,6 +16,7 @@ class AppBackend : public QObject
     Q_PROPERTY(bool isLoggedIn READ isLoggedIn NOTIFY loginStatusChanged)
     Q_PROPERTY(QString currentUserRole READ currentUserRole NOTIFY loginStatusChanged)
     Q_PROPERTY(int currentUserId READ currentUserId NOTIFY loginStatusChanged)
+    Q_PROPERTY(QString currentUserName READ currentUserName NOTIFY loginStatusChanged)
 
 public:
     static AppBackend &instance();
@@ -24,6 +25,7 @@ public:
     bool isLoggedIn() const { return m_isLoggedIn; }
     QString currentUserRole() const { return m_currentUserRole; }
     int currentUserId() const { return m_currentUserId; }
+    QString currentUserName() const { return m_currentUserName; }
 
     Q_INVOKABLE bool registerUser(const QVariantMap& data);
     Q_INVOKABLE QVariantMap authenticateUser(const QString& phone, const QString& password);
@@ -37,6 +39,9 @@ public:
 
     Q_INVOKABLE QVariantList getBookingsForTable(int tableId, const QDate& date);
     Q_INVOKABLE bool createBooking(const QVariantMap& booking);
+    Q_INVOKABLE QVariantList getUserBookings();
+    Q_INVOKABLE bool cancelBooking(int bookingId);
+    Q_INVOKABLE void logout();
 
 signals:
     void loginStatusChanged(); // Сигнал, чтобы QML обновил интерфейс
@@ -46,6 +51,7 @@ private:
 
     bool m_isLoggedIn = false;
     QString m_currentUserRole = "";
+    QString m_currentUserName = "";
     int m_currentUserId = -1;
 };
 

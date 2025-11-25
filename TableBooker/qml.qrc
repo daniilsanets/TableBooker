@@ -16,6 +16,7 @@
         <file>ui/components/ZoomableHall.qml</file>
         <file>ui/user/BookingHallPage.qml</file>
         <file>ui/user/BookingPopup.qml</file>
+        <file>ui/user/ProfilePage.qml</file>
         <file>ui/user/UserPremisesListPage.qml</file>
     </qresource>
 </RCC>

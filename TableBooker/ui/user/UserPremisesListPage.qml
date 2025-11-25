@@ -19,6 +19,8 @@ Page {
     property string searchText: ""
     property int sortMode: 0 // 0 - по имени, 1 - по имени (обратно)
 
+    property bool isAdmin: BackendApi.currentUserRole === "admin"
+
     function loadData() {
         allPremises = BackendApi.getAllPremises()
         applyFilters()
@@ -74,14 +76,25 @@ Page {
 
             ToolButton {
                 Text {
-                    text: Theme.iconInfo
+                    text: Theme.iconPerson
                     font.pixelSize: 24
                     color: Theme.textSecondary
                     anchors.centerIn: parent
                 }
-                onClicked: {
-                    userPremisesPage.StackView.view.push("../AboutPage.qml")
+                onClicked: userPremisesPage.StackView.view.push("ProfilePage.qml")
+            }
+
+            ToolButton {
+                visible: isAdmin
+                Text {
+                    text: Theme.iconSettings
+                    font.pixelSize: 22
+                    color: Theme.textSecondary
+                    anchors.centerIn: parent
                 }
+                onClicked: userPremisesPage.StackView.view.push("../admin/AdminDashboardPage.qml")
+                ToolTip.visible: hovered
+                ToolTip.text: "Админ-панель"
             }
         }
     }

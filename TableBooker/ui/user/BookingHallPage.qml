@@ -16,6 +16,7 @@ Page {
 
     property int premisesId: 0
     property string premisesName: ""
+    property bool isAdmin: BackendApi.currentUserRole === "admin"
     property string selectedDate: Qt.formatDate(new Date(), "yyyy-MM-dd")
     property string selectedTime: "18:30"
     property int selectedDuration: 120
@@ -576,6 +577,7 @@ Page {
         RowLayout {
             anchors.fill: parent
             anchors.leftMargin: 8
+            anchors.rightMargin: 8
             
             ToolButton {
                 Text {
@@ -587,12 +589,41 @@ Page {
                 onClicked: bookingPage.StackView.view.pop()
             }
             
+            ToolButton {
+                visible: bookingPage.isAdmin
+                Text {
+                    text: Theme.iconHome
+                    font.pixelSize: 20
+                    color: Theme.textSecondary
+                    anchors.centerIn: parent
+                }
+                onClicked: bookingPage.StackView.view.push("../admin/AdminDashboardPage.qml")
+                ToolTip.visible: hovered
+                ToolTip.text: "Админ-панель"
+            }
+            
             Label {
                 text: bookingPage.title
                 font.bold: true
                 font.pixelSize: Theme.fontSizeLarge
                 color: Theme.textPrimary
                 Layout.fillWidth: true
+            }
+
+            ToolButton {
+                visible: bookingPage.isAdmin
+                Text {
+                    text: Theme.iconEdit
+                    font.pixelSize: 20
+                    color: Theme.textSecondary
+                    anchors.centerIn: parent
+                }
+                onClicked: bookingPage.StackView.view.push("../admin/HallEditorPage.qml", {
+                    "premisesId": bookingPage.premisesId,
+                    "premisesName": bookingPage.premisesName
+                })
+                ToolTip.visible: hovered
+                ToolTip.text: "Редактировать зал"
             }
         }
     }

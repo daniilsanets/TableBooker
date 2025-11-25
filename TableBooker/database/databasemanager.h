@@ -32,7 +32,9 @@ public:
     bool saveTableLayout(int premisesId, const QList<TableData>& tables);
 
     QList<BookingData> getBookingsForTable(int tableId, const QDate& date);
+    QList<BookingData> getBookingsForUser(int userId);
     bool createBooking(const BookingData& booking);
+    bool cancelBooking(int bookingId, int userId);
 
 private:
     explicit DatabaseManager(QObject *parent = nullptr);

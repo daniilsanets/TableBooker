@@ -190,6 +190,7 @@ UserData DatabaseManager::authenticateUser(const QString &identifier, const QStr
     UserData user;
     user.id = query.value("id").toInt();
     user.username = query.value("username").toString();
+    user.displayName = query.value("nickname").toString();
     user.email = query.value("email").toString();
     user.phone = query.value("phone").toString();
     user.nickname = query.value("nickname").toString();
@@ -354,8 +355,48 @@ QList<BookingData> DatabaseManager::getBookingsForTable(int tableId, const QDate
             b.userId = query.value("user_id").toInt();
             b.startTime = query.value("started_at").toString();
             b.endTime = query.value("ended_at").toString();
+            b.tableName = QString();
+            b.premisesName = QString();
             result.append(b);
         }
     }
     return result;
+}
+
+QList<BookingData> DatabaseManager::getBookingsForUser(int userId)
+{
+    QList<BookingData> result;
+    QSqlQuery query;
+    query.prepare("SELECT b.id, b.table_id, b.user_id, b.started_at, b.ended_at, "
+                  "t.name AS table_name, p.name AS premises_name "
+                  "FROM bookings b "
+                  "JOIN tables t ON b.table_id = t.id "
+                  "JOIN premises p ON t.premises_id = p.id "
+                  "WHERE b.user_id = :uid "
+                  "ORDER BY b.started_at DESC");
+    query.bindValue(":uid", userId);
+
+    if (query.exec()) {
+        while (query.next()) {
+            BookingData b;
+            b.id = query.value("id").toInt();
+            b.tableId = query.value("table_id").toInt();
+            b.userId = query.value("user_id").toInt();
+            b.startTime = query.value("started_at").toString();
+            b.endTime = query.value("ended_at").toString();
+            b.tableName = query.value("table_name").toString();
+            b.premisesName = query.value("premises_name").toString();
+            result.append(b);
+        }
+    }
+    return result;
+}
+
+bool DatabaseManager::cancelBooking(int bookingId, int userId)
+{
+    QSqlQuery query;
+    query.prepare("DELETE FROM bookings WHERE id = :id AND user_id = :uid");
+    query.bindValue(":id", bookingId);
+    query.bindValue(":uid", userId);
+    return query.exec();
 }

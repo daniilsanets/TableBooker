@@ -37,6 +37,7 @@ QVariantMap AppBackend::authenticateUser(const QString &phone, const QString &pa
         m_isLoggedIn = true;
         m_currentUserId = user.id;
         m_currentUserRole = user.role;
+        m_currentUserName = user.displayName.isEmpty() ? user.username : user.displayName;
 
         // Уведомляем QML, что свойства изменились
         emit loginStatusChanged();
@@ -46,6 +47,7 @@ QVariantMap AppBackend::authenticateUser(const QString &phone, const QString &pa
         map["id"] = user.id;
         map["username"] = user.username;
         map["role"] = user.role;
+        map["username"] = user.username;
         map["nickname"] = user.nickname;
         return map;
     }
@@ -155,6 +157,8 @@ QVariantList AppBackend::getBookingsForTable(int tableId, const QDate &date)
         map["userId"] = b.userId;
         map["startTime"] = b.startTime;
         map["endTime"] = b.endTime;
+        map["tableName"] = b.tableName;
+        map["premisesName"] = b.premisesName;
         result.append(map);
     }
     return result;
@@ -169,4 +173,40 @@ bool AppBackend::createBooking(const QVariantMap &booking)
     b.endTime = booking["endTime"].toString();
 
     return DatabaseManager::instance()->createBooking(b);
+}
+
+QVariantList AppBackend::getUserBookings()
+{
+    QVariantList result;
+    if (m_currentUserId < 0)
+        return result;
+
+    QList<BookingData> list = DatabaseManager::instance()->getBookingsForUser(m_currentUserId);
+    for (const BookingData &b : list) {
+        QVariantMap map;
+        map["id"] = b.id;
+        map["tableId"] = b.tableId;
+        map["startTime"] = b.startTime;
+        map["endTime"] = b.endTime;
+        map["tableName"] = b.tableName;
+        map["premisesName"] = b.premisesName;
+        result.append(map);
+    }
+    return result;
+}
+
+bool AppBackend::cancelBooking(int bookingId)
+{
+    if (m_currentUserId < 0)
+        return false;
+    return DatabaseManager::instance()->cancelBooking(bookingId, m_currentUserId);
+}
+
+void AppBackend::logout()
+{
+    m_isLoggedIn = false;
+    m_currentUserId = -1;
+    m_currentUserRole.clear();
+    m_currentUserName.clear();
+    emit loginStatusChanged();
 }

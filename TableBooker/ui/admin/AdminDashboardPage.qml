@@ -48,14 +48,12 @@ Page {
 
             ToolButton {
                 Text {
-                    text: Theme.iconInfo
+                    text: Theme.iconPerson
                     font.pixelSize: 24
                     color: "white"
                     anchors.centerIn: parent
                 }
-                onClicked: {
-                    adminDashboard.StackView.view.push("../AboutPage.qml")
-                }
+                onClicked: adminDashboard.StackView.view.push("../user/ProfilePage.qml")
             }
         }
     }
@@ -332,22 +330,6 @@ Page {
                 onClicked: adminDashboard.StackView.view.push("../user/UserPremisesListPage.qml")
             }
 
-            Button {
-                text: Theme.iconLogout + " Выйти"
-                Layout.fillWidth: true
-                height: 48
-                flat: true
-                
-                contentItem: Text {
-                    text: parent.text
-                    color: Theme.error
-                    font.pixelSize: Theme.fontSizeMedium
-                    horizontalAlignment: Text.AlignHCenter
-                    verticalAlignment: Text.AlignVCenter
-                }
-                
-                onClicked: adminDashboard.StackView.view.pop()
-            }
         }
     }
 }

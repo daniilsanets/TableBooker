@@ -8,6 +8,7 @@
 struct UserData {
     int id = -1;
     QString username;
+    QString displayName;
     QString email;
     QString phone;
     QString nickname;
@@ -49,6 +50,8 @@ struct BookingData {
     int userId = -1;
     QString startTime;
     QString endTime;
+    QString tableName;
+    QString premisesName;
 };
 
 #endif // APPMODELS_H
