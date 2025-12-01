@@ -59,83 +59,126 @@ Page {
     }
 
     Dialog {
-        id: createDialog
-        title: "Новое заведение"
-        x: (parent.width - width) / 2
-        y: (parent.height - height) / 2
-        width: Math.min(parent.width * 0.9, 400)
-        modal: true
-        standardButtons: Dialog.Ok | Dialog.Cancel
-        
-        background: Rectangle {
-            color: Theme.surface
-            radius: Theme.radiusLarge
-        }
-        
-        ColumnLayout {
-            spacing: Theme.spacingMedium
-            anchors.fill: parent
-            anchors.margins: Theme.spacingMedium
-            
-            Text {
-                text: Theme.iconAdd
-                font.pixelSize: 48
-                Layout.alignment: Qt.AlignHCenter
+            id: createDialog
+            anchors.centerIn: parent
+            width: Math.min(parent.width * 0.9, 360)
+            modal: true
+            closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+
+            // Переменные для фокуса (чтобы клавиатура не закрывала диалог)
+            focus: true
+
+            background: Rectangle {
+                color: Theme.surface
+                radius: Theme.radiusLarge
+                // Тень
+                Rectangle {
+                    z: -1; anchors.fill: parent; anchors.margins: -4
+                    color: "#20000000"; radius: parent.radius + 4
+                }
             }
-            
-            Rectangle {
-                Layout.fillWidth: true
-                height: 56
-                color: Theme.surfaceDark
-                radius: Theme.radiusMedium
-                border.color: newPremiseName.activeFocus ? Theme.primary : Theme.divider
-                border.width: newPremiseName.activeFocus ? 2 : 1
-                
-                Row {
-                    anchors.left: parent.left
-                    anchors.leftMargin: 16
-                    anchors.verticalCenter: parent.verticalCenter
-                    spacing: 12
-                    
+
+            contentItem: ColumnLayout {
+                spacing: 20
+
+                // Заголовок
+                Column {
+                    Layout.fillWidth: true
+                    spacing: 8
+
                     Text {
-                        text: Theme.iconRestaurant
-                        font.pixelSize: 24
-                        color: Theme.textSecondary
-                        anchors.verticalCenter: parent.verticalCenter
-                    }
-                    
-                    TextField {
-                        id: newPremiseName
-                        anchors.verticalCenter: parent.verticalCenter
-                        width: parent.parent.width - 60
-                        placeholderText: "Название (например, Летняя терраса)"
-                        background: Item {}
-                        font.pixelSize: Theme.fontSizeMedium
+                        text: "✨ Новое заведение"
+                        font.bold: true
+                        font.pixelSize: Theme.fontSizeLarge
                         color: Theme.textPrimary
+                    }
+
+                    Text {
+                        text: "Введите название, чтобы начать планировку зала."
+                        color: Theme.accent
+                        font.pixelSize: Theme.fontSizeSmall
+                        wrapMode: Text.WordWrap
+                        width: parent.width
+                    }
+                }
+
+                // Поле ввода
+                TextField {
+                    id: newPremiseName
+                    Layout.fillWidth: true
+                    placeholderText: "Например: Lounge Bar"
+                    font.pixelSize: Theme.fontSizeMedium
+
+                    background: Rectangle {
+                        color: Theme.surfaceDark
+                        radius: Theme.radiusMedium
+                        border.color: parent.activeFocus ? Theme.primary : "transparent"
+                        border.width: 2
+                    }
+                    // Авто-фокус при открытии
+                    Component.onCompleted: createDialog.opened.connect(() => { forceActiveFocus() })
+                }
+
+                // Кнопки
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 12
+
+                    Button {
+                        text: "Отмена"
+                        Layout.fillWidth: true
+                        flat: true
+                        contentItem: Text {
+                            text: parent.text
+                            color: Theme.textSecondary
+                            font.bold: true
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignVCenter
+                        }
+                        background: Rectangle { color: "transparent" }
+                        onClicked: createDialog.close()
+                    }
+
+                    Button {
+                        text: "Создать"
+                        Layout.fillWidth: true
+                        enabled: newPremiseName.text.length > 0
+
+                        background: Rectangle {
+                            color: parent.enabled ? Theme.primary : Theme.divider
+                            radius: Theme.radiusMedium
+                        }
+                        contentItem: Text {
+                            text: parent.text
+                            color: "white"
+                            font.bold: true
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignVCenter
+                        }
+                        onClicked: {
+                            if (newPremiseName.text === "") return
+                            var data = { "name": newPremiseName.text, "bgImagePath": "" }
+                            var success = BackendApi.createPremises(data)
+                            if (success) {
+                                newPremiseName.text = ""
+                                refreshData()
+                                createDialog.close()
+                            }
+                        }
                     }
                 }
             }
-        }
 
-        onAccepted: {
-            if (newPremiseName.text === "") return
-
-            var data = {
-                "name": newPremiseName.text,
-                "bgImagePath": ""
+            enter: Transition {
+                ParallelAnimation {
+                    NumberAnimation { property: "opacity"; from: 0.0; to: 1.0; duration: 200 }
+                    NumberAnimation { property: "y"; from: parent.height; to: (parent.height - height)/2; duration: 250; easing.type: Easing.OutCubic }
+                }
             }
-
-            var success = BackendApi.createPremises(data)
-            if (success) {
-                console.log("Заведение создано!")
-                newPremiseName.text = ""
-                refreshData()
-            } else {
-                console.log("Ошибка создания")
+            exit: Transition {
+                NumberAnimation { property: "opacity"; from: 1.0; to: 0.0; duration: 150 }
             }
         }
-    }
-
     // --- Основной интерфейс ---
     ColumnLayout {
         anchors.fill: parent

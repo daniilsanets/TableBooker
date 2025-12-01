@@ -2,6 +2,7 @@ import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
 import com.tablebooker.api 1.0
+import "Theme.js" as Theme
 
 Page {
     id: loginPage
@@ -103,12 +104,76 @@ Page {
     }
 
     Dialog {
-        id: errorDialog
-        title: "Ошибка"
-        x: (parent.width - width) / 2
-        y: (parent.height - height) / 2
-        modal: true
-        standardButtons: Dialog.Ok
-        Label { text: "Неверный логин или пароль" }
-    }
+            id: errorDialog
+            anchors.centerIn: parent
+            width: Math.min(parent.width * 0.8, 300)
+            modal: true
+            closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+
+            background: Rectangle {
+                color: Theme.surface
+                radius: Theme.radiusLarge
+                // Простая тень без Effects (для совместимости)
+                Rectangle {
+                    z: -1
+                    anchors.fill: parent
+                    anchors.topMargin: 4
+                    color: "#20000000"
+                    radius: parent.radius
+                }
+            }
+
+            contentItem: ColumnLayout {
+                spacing: 20
+
+                Text {
+                    text: "🔐"
+                    font.pixelSize: 40
+                    Layout.alignment: Qt.AlignHCenter
+                }
+
+                Column {
+                    Layout.fillWidth: true
+                    spacing: 8
+
+                    Text {
+                        text: "Не удалось войти"
+                        font.bold: true
+                        font.pixelSize: Theme.fontSizeLarge
+                        color: Theme.textPrimary
+                        anchors.horizontalCenter: parent.horizontalCenter
+                    }
+
+                    Text {
+                        text: "Проверьте логин и пароль"
+                        color: Theme.textSecondary
+                        font.pixelSize: Theme.fontSizeMedium
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        horizontalAlignment: Text.AlignHCenter
+                    }
+                }
+
+                Button {
+                    text: "Попробовать снова"
+                    Layout.fillWidth: true
+                    background: Rectangle {
+                        color: Theme.error // Красная кнопка для ошибки
+                        radius: Theme.radiusMedium
+                    }
+                    contentItem: Text {
+                        text: parent.text
+                        color: "white"
+                        font.bold: true
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                    }
+                    onClicked: errorDialog.close()
+                }
+            }
+
+            enter: Transition {
+                NumberAnimation { property: "opacity"; from: 0.0; to: 1.0; duration: 150 }
+                NumberAnimation { property: "scale"; from: 0.9; to: 1.0; duration: 150; easing.type: Easing.OutBack }
+            }
+        }
 }

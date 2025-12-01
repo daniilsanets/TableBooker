@@ -13,28 +13,100 @@ Page {
         color: Theme.background
     }
 
-    Dialog {
-        id: errorDialog
-        title: "Ошибка"
-        x: (parent.width - width) / 2
-        y: (parent.height - height) / 2
-        width: parent.width * 0.8
-        modal: true
-        standardButtons: Dialog.Ok
-        property alias text: errorLabel.text
-        
-        background: Rectangle {
-            color: Theme.surface
-            radius: Theme.radiusMedium
-        }
+    // Красивый диалог ошибки
+        Dialog {
+            id: errorDialog
+            anchors.centerIn: parent
+            width: Math.min(parent.width * 0.85, 320)
+            modal: true
+            closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
 
-        Label {
-            id: errorLabel
-            text: ""
-            color: Theme.error
-            wrapMode: Text.WordWrap
+            property alias text: errorText.text
+
+            // Фон диалога
+            background: Rectangle {
+                color: Theme.surface
+                radius: Theme.radiusLarge
+                border.color: "transparent" // Убираем системные рамки
+
+                // Тень
+                layer.enabled: true
+                layer.effect: DropShadow {
+                    color: "#40000000"
+                    radius: 16
+                    verticalOffset: 4
+                    samples: 16
+                }
+            }
+
+            contentItem: ColumnLayout {
+                spacing: 16
+
+                // Иконка ошибки
+                Rectangle {
+                    Layout.alignment: Qt.AlignHCenter
+                    width: 60; height: 60
+                    radius: 30
+                    color: "#FFEBEE" // Светло-красный фон
+
+                    Text {
+                        text: "⚠️"
+                        font.pixelSize: 30
+                        anchors.centerIn: parent
+                    }
+                }
+
+                // Заголовок
+                Text {
+                    text: "Ошибка"
+                    font.bold: true
+                    font.pixelSize: Theme.fontSizeLarge
+                    color: Theme.textPrimary
+                    Layout.alignment: Qt.AlignHCenter
+                }
+
+                // Текст ошибки
+                Text {
+                    id: errorText
+                    text: ""
+                    font.pixelSize: Theme.fontSizeMedium
+                    color: Theme.textSecondary
+                    wrapMode: Text.WordWrap
+                    horizontalAlignment: Text.AlignHCenter
+                    Layout.fillWidth: true
+                }
+
+                // Кнопка ОК
+                Button {
+                    text: "Понятно"
+                    Layout.fillWidth: true
+                    Layout.topMargin: 8
+
+                    background: Rectangle {
+                        color: Theme.primary
+                        radius: Theme.radiusMedium
+                    }
+                    contentItem: Text {
+                        text: parent.text
+                        color: "white"
+                        font.bold: true
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                    }
+                    onClicked: errorDialog.close()
+                }
+            }
+
+            // Анимация появления
+            enter: Transition {
+                NumberAnimation { property: "scale"; from: 0.9; to: 1.0; duration: 150; easing.type: Easing.OutBack }
+                NumberAnimation { property: "opacity"; from: 0.0; to: 1.0; duration: 100 }
+            }
+            exit: Transition {
+                NumberAnimation { property: "scale"; from: 1.0; to: 0.9; duration: 100 }
+                NumberAnimation { property: "opacity"; from: 1.0; to: 0.0; duration: 100 }
+            }
         }
-    }
 
     Flickable {
         anchors.fill: parent

@@ -7,290 +7,238 @@ import "../Theme.js" as Theme
 
 Dialog {
     id: root
-    title: "Бронирование столика"
+
+    // Центрирование
     x: (parent.width - width) / 2
     y: (parent.height - height) / 2
-    width: Math.min(parent.width * 0.9, 400)
+    width: Math.min(parent.width * 0.9, 360)
+
     modal: true
-    standardButtons: Dialog.Cancel
-    
-    background: Rectangle {
-        color: Theme.surface
-        radius: Theme.radiusLarge
-    }
+    closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
 
-    signal bookingCreated()
-
-    // Свойства, которые мы передадим при открытии
     property int tableId: -1
     property string tableName: "?"
 
-    ColumnLayout {
-        spacing: Theme.spacingMedium
-        anchors.fill: parent
-        anchors.margins: Theme.spacingMedium
+    signal bookingCreated()
 
-        // Заголовок
-        Column {
-            Layout.alignment: Qt.AlignHCenter
-            Layout.fillWidth: true
-            spacing: Theme.spacingSmall
-            
-            Text {
-                text: Theme.iconTable
-                font.pixelSize: 48
-                anchors.horizontalCenter: parent.horizontalCenter
-            }
-            
-            Label {
-                text: "Бронируем: " + root.tableName
-                font.bold: true
-                font.pixelSize: Theme.fontSizeLarge
-                color: Theme.textPrimary
-                Layout.alignment: Qt.AlignHCenter
-                anchors.horizontalCenter: parent.horizontalCenter
-            }
-        }
-
-        // Поле даты
+    // Фон диалога: Чистый белый с тенью
+    background: Rectangle {
+        color: "white"
+        radius: 16
+        layer.enabled: true
+        // Эмуляция тени прямоугольником (для совместимости)
         Rectangle {
-            Layout.fillWidth: true
-            height: 56
-            color: Theme.surfaceDark
-            radius: Theme.radiusMedium
-            border.color: dateField.activeFocus ? Theme.primary : Theme.divider
-            border.width: dateField.activeFocus ? 2 : 1
-            
-            Item {
-                anchors.left: parent.left
-                anchors.leftMargin: 16
-                anchors.right: parent.right
-                anchors.rightMargin: 16
-                anchors.verticalCenter: parent.verticalCenter
-                height: 40
-                
-                Row {
-                    anchors.fill: parent
-                    spacing: 12
-                    
-                    Text {
-                        text: Theme.iconCalendar
-                        font.pixelSize: 24
-                        color: Theme.textSecondary
-                        anchors.verticalCenter: parent.verticalCenter
-                    }
-                    
-                    TextField {
-                        id: dateField
-                        anchors.verticalCenter: parent.verticalCenter
-                        width: parent.parent.width - 60
-                        placeholderText: "YYYY-MM-DD"
-                        text: new Date().toISOString().slice(0,10)
-                        inputMask: "9999-99-99"
-                        validator: RegularExpressionValidator {
-                            regularExpression: /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$/
-                        }
-                        background: Item {}
-                        font.pixelSize: Theme.fontSizeMedium
-                        color: Theme.textPrimary
-                    }
-                }
-            }
+            z: -1; anchors.fill: parent; anchors.margins: -4
+            color: "#40000000"; radius: 20
         }
+    }
 
-        // Поля времени
+    contentItem: ColumnLayout {
+        spacing: 20
+
+        // 1. ЗАГОЛОВОК
         RowLayout {
             Layout.fillWidth: true
-            spacing: Theme.spacingSmall
-            
-            Rectangle {
+
+            Column {
                 Layout.fillWidth: true
-                height: 56
-                color: Theme.surfaceDark
-                radius: Theme.radiusMedium
-                border.color: startTimeField.activeFocus ? Theme.primary : Theme.divider
-                border.width: startTimeField.activeFocus ? 2 : 1
-                
-                Item {
-                    anchors.left: parent.left
-                    anchors.leftMargin: 16
-                    anchors.right: parent.right
-                    anchors.rightMargin: 16
-                    anchors.verticalCenter: parent.verticalCenter
-                    height: 40
-                    
-                    Row {
-                        anchors.fill: parent
-                        spacing: 12
-                        
-                        Text {
-                            text: Theme.iconTime
-                            font.pixelSize: 24
-                            color: Theme.textSecondary
-                            anchors.verticalCenter: parent.verticalCenter
-                        }
-                        
-                        TextField {
-                            id: startTimeField
-                            anchors.verticalCenter: parent.verticalCenter
-                            width: parent.parent.width - 60
-                            placeholderText: "Начало (HH:MM)"
-                            text: "18:00"
-                            inputMask: "99:99"
-                            validator: RegularExpressionValidator { 
-                                regularExpression: /^([0-1][0-9]|2[0-3]):[0-5][0-9]$/ 
-                            }
-                            background: Item {}
-                            font.pixelSize: Theme.fontSizeMedium
-                            color: Theme.textPrimary
-                        }
+                spacing: 4
+
+                Text {
+                    text: "Бронирование"
+                    font.bold: true
+                    font.pixelSize: 22
+                    color: "black" // Черный текст
+                }
+
+                Row {
+                    spacing: 6
+                    Text { text: "🪑"; font.pixelSize: 14 }
+                    Text {
+                        text: root.tableName
+                        font.pixelSize: 14
+                        color: "#424242" // Темно-серый
+                        font.bold: true
                     }
                 }
             }
-            
-            Text {
-                text: "—"
-                font.pixelSize: Theme.fontSizeLarge
-                color: Theme.textSecondary
-                Layout.alignment: Qt.AlignVCenter
+
+            // Кнопка закрытия
+            ToolButton {
+                text: "✕"
+                contentItem: Text {
+                    text: parent.text
+                    color: "black"
+                    font.pixelSize: 20
+                    anchors.centerIn: parent
+                }
+                background: Rectangle { color: "transparent" }
+                onClicked: root.close()
             }
-            
-            Rectangle {
+        }
+
+        // Разделитель
+        Rectangle { Layout.fillWidth: true; height: 1; color: "#EEEEEE" }
+
+        // 2. ПОЛЯ ВВОДА
+        ColumnLayout {
+            Layout.fillWidth: true
+            spacing: 16
+
+            // Дата
+            ColumnLayout {
                 Layout.fillWidth: true
-                height: 56
-                color: Theme.surfaceDark
-                radius: Theme.radiusMedium
-                border.color: endTimeField.activeFocus ? Theme.primary : Theme.divider
-                border.width: endTimeField.activeFocus ? 2 : 1
-                
-                Item {
-                    anchors.left: parent.left
-                    anchors.leftMargin: 16
-                    anchors.right: parent.right
-                    anchors.rightMargin: 16
-                    anchors.verticalCenter: parent.verticalCenter
-                    height: 40
-                    
-                    Row {
-                        anchors.fill: parent
-                        spacing: 12
-                        
-                        Text {
-                            text: Theme.iconTime
-                            font.pixelSize: 24
-                            color: Theme.textSecondary
-                            anchors.verticalCenter: parent.verticalCenter
+                spacing: 6
+                Text { text: "Дата"; color: "black"; font.bold: true; font.pixelSize: 12 }
+
+                TextField {
+                    id: dateField
+                    Layout.fillWidth: true
+                    placeholderText: "YYYY-MM-DD"
+                    text: new Date().toISOString().slice(0,10)
+                    inputMask: "9999-99-99"
+                    color: "black" // Черный текст ввода
+                    font.pixelSize: 16
+
+                    background: Rectangle {
+                        color: "#F5F5F5"
+                        radius: 8
+                        border.color: parent.activeFocus ? Theme.primary : "transparent"
+                        border.width: 2
+                    }
+                }
+            }
+
+            // Время (Начало и Конец)
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 12
+
+                // Начало
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 6
+                    Text { text: "Начало"; color: "black"; font.bold: true; font.pixelSize: 12 }
+
+                    TextField {
+                        id: startTimeField
+                        Layout.fillWidth: true
+                        text: "18:00"
+                        inputMask: "99:99"
+                        color: "black"
+                        font.pixelSize: 16
+                        horizontalAlignment: Text.AlignHCenter
+
+                        background: Rectangle {
+                            color: "#F5F5F5"
+                            radius: 8
+                            border.color: parent.activeFocus ? Theme.primary : "transparent"
+                            border.width: 2
                         }
-                        
-                        TextField {
-                            id: endTimeField
-                            anchors.verticalCenter: parent.verticalCenter
-                            width: parent.parent.width - 60
-                            placeholderText: "Конец (HH:MM)"
-                            text: "20:00"
-                            inputMask: "99:99"
-                            validator: RegularExpressionValidator { 
-                                regularExpression: /^([0-1][0-9]|2[0-3]):[0-5][0-9]$/ 
-                            }
-                            background: Item {}
-                            font.pixelSize: Theme.fontSizeMedium
-                            color: Theme.textPrimary
+                    }
+                }
+
+                Text {
+                    text: "➔"
+                    color: "#9E9E9E"
+                    Layout.alignment: Qt.AlignVCenter
+                    Layout.topMargin: 16
+                }
+
+                // Конец
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 6
+                    Text { text: "Конец"; color: "black"; font.bold: true; font.pixelSize: 12 }
+
+                    TextField {
+                        id: endTimeField
+                        Layout.fillWidth: true
+                        text: "20:00"
+                        inputMask: "99:99"
+                        color: "black"
+                        font.pixelSize: 16
+                        horizontalAlignment: Text.AlignHCenter
+
+                        background: Rectangle {
+                            color: "#F5F5F5"
+                            radius: 8
+                            border.color: parent.activeFocus ? Theme.primary : "transparent"
+                            border.width: 2
                         }
                     }
                 }
             }
         }
 
+        // Сообщение об ошибке
         Label {
             id: errorLabel
-            color: Theme.error
             visible: false
-            text: ""
+            color: Theme.error
+            font.pixelSize: 12
             wrapMode: Text.WordWrap
             Layout.fillWidth: true
+            horizontalAlignment: Text.AlignHCenter
         }
 
+        // 3. КНОПКА ПОДТВЕРЖДЕНИЯ
         Button {
-            id: confirmButton
-            text: "Подтвердить бронирование"
+            text: "Подтвердить"
             Layout.fillWidth: true
-            Layout.topMargin: Theme.spacingSmall
-            height: 56
-            
+            Layout.topMargin: 10
+            height: 50
+
             background: Rectangle {
                 color: Theme.primary
-                radius: Theme.radiusMedium
-                opacity: confirmButton.pressed ? 0.8 : 1.0
-                
-                Behavior on opacity {
-                    NumberAnimation { duration: 150 }
-                }
+                radius: 10
+                opacity: parent.pressed ? 0.8 : 1.0
             }
-            
+
             contentItem: Text {
-                text: confirmButton.text
+                text: parent.text
                 color: "white"
-                font.pixelSize: Theme.fontSizeLarge
                 font.bold: true
+                font.pixelSize: 16
                 horizontalAlignment: Text.AlignHCenter
                 verticalAlignment: Text.AlignVCenter
             }
-            
+
             onClicked: validateAndSend()
         }
     }
 
-    function showError(msg)
-    {
+    // --- ЛОГИКА ---
+    function prefill(dateValue, startTimeValue, endTimeValue) {
+        if (dateValue && dateValue.length === 10) dateField.text = dateValue
+        if (startTimeValue && startTimeValue.length === 5) startTimeField.text = startTimeValue
+        if (endTimeValue && endTimeValue.length === 5) endTimeField.text = endTimeValue
+        errorLabel.visible = false
+    }
+
+    function showError(msg) {
         errorLabel.text = msg
         errorLabel.visible = true
     }
 
-    function prefill(dateValue, startTimeValue, endTimeValue) {
-        if (dateValue && dateValue.length === 10)
-            dateField.text = dateValue
-        if (startTimeValue && startTimeValue.length === 5)
-            startTimeField.text = startTimeValue
-        if (endTimeValue && endTimeValue.length === 5)
-            endTimeField.text = endTimeValue
-        errorLabel.visible = false
-    }
-
-    function validateAndSend()
-    {
+    function validateAndSend() {
         var dateString = dateField.text + " " + startTimeField.text;
-
         var selectedDate = new Date(dateString);
-
         var now = new Date();
 
         if (selectedDate <= now) {
-            console.log("⚠️ Ошибка: дата в прошлом!")
-            showError("Нельзя забронировать столик в прошлом")
+            showError("Нельзя выбрать время в прошлом")
             return
         }
-            // 1. Проверка на пустоту (с маской это менее актуально, но полезно)
         if (dateField.text.length < 10 || startTimeField.text.length < 5 || endTimeField.text.length < 5) {
-            showError("Заполните все поля корректно")
+            showError("Заполните все поля")
             return
         }
-
-        // 2. Логическая проверка времени
         if (startTimeField.text >= endTimeField.text) {
-            showError("Время начала должно быть раньше конца")
+            showError("Начало должно быть раньше конца")
             return
         }
 
-        if (!startTimeField.acceptableInput || !endTimeField.acceptableInput) {
-            showError("Некорректное время (формат HH:MM)")
-            return
-        }
-        // Если всё ок — отправляем
-        sendBooking()
-    }
-
-    function sendBooking()
-    {
         var start = dateField.text + " " + startTimeField.text + ":00"
         var end = dateField.text + " " + endTimeField.text + ":00"
 
@@ -302,21 +250,10 @@ Dialog {
 
         var success = BackendApi.createBooking(bookingData)
         if (success) {
-            console.log("✅ Бронь успешна!")
-            // Очищаем поля
-            dateField.text = new Date().toISOString().slice(0,10)
-            startTimeField.text = "18:00"
-            endTimeField.text = "20:00"
-            errorLabel.visible = false
             root.bookingCreated()
-            root.close() // Закрываем окно сами
+            root.close()
         } else {
-            showError("Ошибка: Возможно, это время уже занято или произошла ошибка сервера")
+            showError("Время занято или ошибка сервера")
         }
-    }
-
-    onAccepted:
-    {
-        validateAndSend()
     }
 }
