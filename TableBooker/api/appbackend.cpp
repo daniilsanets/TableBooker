@@ -210,3 +210,33 @@ void AppBackend::logout()
     m_currentUserName.clear();
     emit loginStatusChanged();
 }
+
+QVariantList AppBackend::getAllUsers()
+{
+    // Только супер-админ может смотреть этот список!
+    if (m_currentUserRole != "superadmin") return {};
+
+    QList<UserData> users = DatabaseManager::instance()->getAllUsers();
+    QVariantList result;
+    for (const auto& u : users) {
+        // Себя в списке не показываем, чтобы случайно не удалить права
+        if (u.id == m_currentUserId) continue;
+
+        QVariantMap map;
+        map["id"] = u.id;
+        map["username"] = u.username; // Логин
+        map["nickname"] = u.nickname; // Имя
+        map["role"] = u.role;
+        map["phone"] = u.phone;
+        result.append(map);
+    }
+    return result;
+}
+
+bool AppBackend::changeUserRole(int userId, bool makeAdmin)
+{
+    if (m_currentUserRole != "superadmin") return false;
+
+    QString newRole = makeAdmin ? "admin" : "user";
+    return DatabaseManager::instance()->updateUserRole(userId, newRole);
+}

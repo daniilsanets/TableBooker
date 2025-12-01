@@ -18,5 +18,6 @@
         <file>ui/user/BookingPopup.qml</file>
         <file>ui/user/ProfilePage.qml</file>
         <file>ui/user/UserPremisesListPage.qml</file>
+        <file>ui/admin/UserManagementPage.qml</file>
     </qresource>
 </RCC>

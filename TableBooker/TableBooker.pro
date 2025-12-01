@@ -32,6 +32,7 @@ DISTFILES += \
     ui/admin/AdminDashboardPage.qml \
     ui/admin/EditableTableItem.qml \
     ui/admin/HallEditorPage.qml \
+    ui/admin/UserManagementPage.qml \
     ui/components/TableWidget.qml \
     ui/components/ZoomableHall.qml \
     ui/components/MaterialButton.qml \
@@ -40,4 +41,5 @@ DISTFILES += \
     ui/components/IconLabel.qml \
     ui/user/BookingHallPage.qml \
     ui/user/BookingPopup.qml \
+    ui/user/ProfilePage.qml \
     ui/user/UserPremisesListPage.qml

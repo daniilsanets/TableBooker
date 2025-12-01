@@ -43,6 +43,9 @@ public:
     Q_INVOKABLE bool cancelBooking(int bookingId);
     Q_INVOKABLE void logout();
 
+    Q_INVOKABLE QVariantList getAllUsers();
+    Q_INVOKABLE bool changeUserRole(int userId, bool makeAdmin);
+
 signals:
     void loginStatusChanged(); // Сигнал, чтобы QML обновил интерфейс
 

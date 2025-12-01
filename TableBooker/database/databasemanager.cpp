@@ -45,6 +45,7 @@ void DatabaseManager::initDatabase()
         query.exec("PRAGMA foreign_keys = ON;");
 
         createTables();
+        createDefaultSuperAdmin();
     }
 }
 
@@ -61,7 +62,7 @@ void DatabaseManager::createTables()
             phone TEXT NOT NULL UNIQUE,
             nickname VARCHAR(100) NOT NULL,
             password_hash VARCHAR(200) NOT NULL,
-            role VARCHAR(20) NOT NULL CHECK(role IN ('user', 'admin'))
+            role VARCHAR(20) NOT NULL CHECK(role IN ('user', 'admin', 'superadmin'))
         );
     )";
     if (!query.exec(usersTable)) qDebug() << "Error creating users table:" << query.lastError();
@@ -398,5 +399,67 @@ bool DatabaseManager::cancelBooking(int bookingId, int userId)
     query.prepare("DELETE FROM bookings WHERE id = :id AND user_id = :uid");
     query.bindValue(":id", bookingId);
     query.bindValue(":uid", userId);
+    return query.exec();
+}
+
+void DatabaseManager::createDefaultSuperAdmin()
+{
+    // Проверяем, есть ли уже админ
+    QSqlQuery check;
+    check.prepare("SELECT id FROM users WHERE role = 'superadmin'");
+    if (check.exec() && check.next()) return; // Уже есть, выходим
+
+    // Если нет - создаем
+    UserData admin;
+    admin.username = "admin";
+    admin.passwordHash = "admin123"; // Пароль по умолчанию
+    admin.email = "admin@tablebooker.com";
+    admin.phone = "000000000";
+    admin.nickname = "Super Admin";
+    admin.role = "superadmin";
+
+    // Используем существующую функцию регистрации, но нам нужно разрешить роль superadmin
+    // (функция registerUser у вас уже есть, но она ставит "user" по умолчанию.
+    // Нам нужно чуть-чуть подправить registerUser или написать INSERT вручную тут)
+
+    // Пишем вручную для надежности:
+    QSqlQuery query;
+    QString hash = QString(QCryptographicHash::hash(admin.passwordHash.toUtf8(), QCryptographicHash::Sha256).toHex());
+
+    query.prepare("INSERT INTO users (username, email, phone, nickname, password_hash, role) "
+                  "VALUES (:u, :e, :p, :n, :pass, :role)");
+    query.bindValue(":u", admin.username);
+    query.bindValue(":e", admin.email);
+    query.bindValue(":p", admin.phone);
+    query.bindValue(":n", admin.nickname);
+    query.bindValue(":pass", hash);
+    query.bindValue(":role", "superadmin");
+
+    if(query.exec()) qDebug() << "Super Admin created: login=admin pass=admin123";
+    else qDebug() << "Failed to create Super Admin:" << query.lastError().text();
+}
+
+QList<UserData> DatabaseManager::getAllUsers()
+{
+    QList<UserData> list;
+    QSqlQuery query("SELECT id, username, nickname, role, phone FROM users ORDER BY id");
+    while (query.next()) {
+        UserData u;
+        u.id = query.value("id").toInt();
+        u.username = query.value("username").toString();
+        u.nickname = query.value("nickname").toString();
+        u.role = query.value("role").toString();
+        u.phone = query.value("phone").toString();
+        list.append(u);
+    }
+    return list;
+}
+
+bool DatabaseManager::updateUserRole(int userId, const QString &newRole)
+{
+    QSqlQuery query;
+    query.prepare("UPDATE users SET role = :r WHERE id = :id");
+    query.bindValue(":r", newRole);
+    query.bindValue(":id", userId);
     return query.exec();
 }

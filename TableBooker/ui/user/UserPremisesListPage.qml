@@ -52,50 +52,26 @@ Page {
     Component.onCompleted: loadData()
 
     header: ToolBar {
-        background: Rectangle {
-            color: Theme.surface
-        }
-        
         RowLayout {
             anchors.fill: parent
-            anchors.leftMargin: 16
-            anchors.rightMargin: 16
+            anchors.leftMargin: 10; anchors.rightMargin: 10
 
-            Text {
-                text: "🍽️"
-                font.pixelSize: 24
-            }
-            
-            Label {
-                text: "Выберите заведение"
-                font.bold: true
-                font.pixelSize: Theme.fontSizeLarge
-                color: Theme.textPrimary
-                Layout.fillWidth: true
-            }
-
+            // Кнопка Профиля слева
             ToolButton {
-                Text {
-                    text: Theme.iconPerson
-                    font.pixelSize: 24
-                    color: Theme.textSecondary
-                    anchors.centerIn: parent
-                }
+                text: "👤"
+                font.pixelSize: 18
                 onClicked: userPremisesPage.StackView.view.push("ProfilePage.qml")
             }
 
-            ToolButton {
-                visible: isAdmin
-                Text {
-                    text: Theme.iconSettings
-                    font.pixelSize: 22
-                    color: Theme.textSecondary
-                    anchors.centerIn: parent
-                }
-                onClicked: userPremisesPage.StackView.view.push("../admin/AdminDashboardPage.qml")
-                ToolTip.visible: hovered
-                ToolTip.text: "Админ-панель"
+            Label {
+                text: userPremisesPage.title
+                font.bold: true
+                Layout.fillWidth: true
+                horizontalAlignment: Qt.AlignHCenter
             }
+
+            // Справа пусто или кнопка "О программе" (можно убрать, т.к. она теперь в профиле)
+            Item { width: 40 }
         }
     }
 

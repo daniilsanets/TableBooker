@@ -36,6 +36,10 @@ public:
     bool createBooking(const BookingData& booking);
     bool cancelBooking(int bookingId, int userId);
 
+    void createDefaultSuperAdmin();
+    QList<UserData> getAllUsers();
+    bool updateUserRole(int userId, const QString& newRole);
+
 private:
     explicit DatabaseManager(QObject *parent = nullptr);
     ~DatabaseManager();
