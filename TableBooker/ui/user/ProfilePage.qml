@@ -17,22 +17,37 @@ Page {
     property string userName: BackendApi.currentUserName !== "" ? BackendApi.currentUserName : "Пользователь"
     property var userBookings: []
 
-    // Загрузка списка бронирований
+    // Хелпер для названий месяцев
+    readonly property var monthNames: ["Янв", "Фев", "Мар", "Апр", "Май", "Июн", "Июл", "Авг", "Сен", "Окт", "Ноя", "Дек"]
+
     function loadBookings() {
         userBookings = BackendApi.getUserBookings()
     }
 
-    // Отмена бронирования
     function cancelBooking(id) {
         var success = BackendApi.cancelBooking(id)
         if (success) {
-            loadBookings() // Обновляем список
+            loadBookings()
         }
+    }
+
+    // Парсим дату "YYYY-MM-DD HH:MM:SS"
+    function getDay(dateStr) {
+        return dateStr.substring(8, 10)
+    }
+
+    function getMonth(dateStr) {
+        var monthIndex = parseInt(dateStr.substring(5, 7)) - 1
+        if (monthIndex >= 0 && monthIndex < 12) return monthNames[monthIndex]
+        return ""
+    }
+
+    function getTime(dateStr) {
+        return dateStr.substring(11, 16)
     }
 
     Component.onCompleted: loadBookings()
 
-    // Шапка страницы (Header)
     header: ToolBar {
         background: Rectangle { color: Theme.surface }
         RowLayout {
@@ -59,7 +74,6 @@ Page {
                 Layout.fillWidth: true
             }
 
-            // Кнопка обновления
             ToolButton {
                 text: Theme.iconRotateRight
                 contentItem: Text {
@@ -73,7 +87,6 @@ Page {
         }
     }
 
-    // Основной контент с прокруткой
     Flickable {
         anchors.fill: parent
         contentHeight: contentColumn.height + 40
@@ -84,11 +97,11 @@ Page {
             width: parent.width
             spacing: Theme.spacingMedium
 
-            // 1. КАРТОЧКА ПРОФИЛЯ
+            // --- КАРТОЧКА ПРОФИЛЯ ---
             Rectangle {
                 Layout.fillWidth: true
-                height: 140
-                radius: 0 // На всю ширину
+                height: 130
+                radius: 0
                 gradient: Gradient {
                     GradientStop { position: 0.0; color: Theme.primary }
                     GradientStop { position: 1.0; color: Theme.primaryDark }
@@ -99,13 +112,12 @@ Page {
                     anchors.margins: Theme.spacingLarge
                     spacing: Theme.spacingMedium
 
-                    // Аватар
                     Rectangle {
-                        Layout.preferredWidth: 70
-                        Layout.preferredHeight: 70
-                        radius: 35
+                        Layout.preferredWidth: 64
+                        Layout.preferredHeight: 64
+                        radius: 32
                         color: "white"
-                        opacity: 0.9
+                        opacity: 0.95
                         Text {
                             text: "👤"
                             font.pixelSize: 32
@@ -113,45 +125,46 @@ Page {
                         }
                     }
 
-                    // Инфо
                     ColumnLayout {
                         Layout.fillWidth: true
-                        spacing: 4
+                        spacing: 2
 
                         Text {
                             text: userName
                             color: "white"
                             font.bold: true
-                            font.pixelSize: Theme.fontSizeXLarge
+                            font.pixelSize: 20
                         }
 
-                        Rectangle {
-                            color: "white"
-                            radius: 4
-                            opacity: 0.2
-                            Layout.preferredHeight: 24
-                            Layout.preferredWidth: roleLabel.width + 16
-
-                            Text {
-                                id: roleLabel
-                                text: userRole === "superadmin" ? "👑 Основатель" : (userRole === "admin" ? "Администратор" : "Гость")
-                                color: "white" // Для контраста на темном фоне лучше белый
-                                font.pixelSize: Theme.fontSizeSmall
-                                font.bold: true
-                                anchors.centerIn: parent
+                        Row {
+                            spacing: 6
+                            Rectangle {
+                                color: "white"
+                                radius: 4
+                                opacity: 0.25
+                                width: roleLabel.width + 12
+                                height: 20
+                                Text {
+                                    id: roleLabel
+                                    text: userRole === "superadmin" ? "👑 Основатель" : (userRole === "admin" ? "Админ" : "Гость")
+                                    color: "white"
+                                    font.pixelSize: 11
+                                    font.bold: true
+                                    anchors.centerIn: parent
+                                }
                             }
-                        }
-
-                        Text {
-                            text: "ID: " + BackendApi.currentUserId
-                            color: "#E0E0E0"
-                            font.pixelSize: Theme.fontSizeSmall
+                            Text {
+                                text: "ID: " + BackendApi.currentUserId
+                                color: "#E0E0E0"
+                                font.pixelSize: 12
+                                anchors.verticalCenter: parent.verticalCenter
+                            }
                         }
                     }
                 }
             }
 
-            // 2. СЕКЦИЯ БРОНИРОВАНИЙ
+            // --- СПИСОК БРОНИРОВАНИЙ ---
             ColumnLayout {
                 Layout.fillWidth: true
                 Layout.leftMargin: Theme.spacingMedium
@@ -163,113 +176,124 @@ Page {
                     font.bold: true
                     font.pixelSize: Theme.fontSizeLarge
                     color: Theme.textPrimary
-                    Layout.topMargin: Theme.spacingMedium
+                    Layout.topMargin: 8
+                    Layout.bottomMargin: 8
                 }
 
-                // Список броней (через Repeater внутри ColumnLayout, чтобы скроллилось вместе со всей страницей)
                 Repeater {
                     model: userBookings
                     delegate: Card {
                         Layout.fillWidth: true
-                        Layout.preferredHeight: 110
+                        Layout.preferredHeight: 90 // Компактная высота
 
                         content: RowLayout {
                             anchors.fill: parent
                             spacing: Theme.spacingMedium
 
-                            // Дата (слева, крупно)
-                            Column {
-                                Layout.alignment: Qt.AlignVCenter
-                                spacing: 2
-                                width: 50
-
-                                Text {
-                                    // Парсим дату "YYYY-MM-DD HH:MM:SS" -> Число
-                                    text: modelData.startTime.substring(8, 10)
-                                    font.bold: true
-                                    font.pixelSize: 24
-                                    color: Theme.primary
-                                    anchors.horizontalCenter: parent.horizontalCenter
-                                }
-                                Text {
-                                    // Месяц (упрощенно)
-                                    text: "Дата"
-                                    font.pixelSize: 10
-                                    color: Theme.textSecondary
-                                    anchors.horizontalCenter: parent.horizontalCenter
-                                }
-                            }
-
+                            // 1. БЛОК ДАТЫ (Слева)
                             Rectangle {
-                                width: 1
-                                height: parent.height * 0.8
-                                color: Theme.divider
-                                Layout.alignment: Qt.AlignVCenter
+                                Layout.preferredWidth: 56
+                                Layout.fillHeight: true
+                                radius: Theme.radiusMedium
+                                color: Qt.alpha(Theme.primary, 0.1) // Прозрачный синий фон
+
+                                Column {
+                                    anchors.centerIn: parent
+                                    spacing: -2 // Чуть сближаем
+
+                                    Text {
+                                        text: getDay(modelData.startTime)
+                                        font.bold: true
+                                        font.pixelSize: 22
+                                        color: Theme.primary
+                                        anchors.horizontalCenter: parent.horizontalCenter
+                                    }
+                                    Text {
+                                        text: getMonth(modelData.startTime)
+                                        font.pixelSize: 12
+                                        font.weight: Font.DemiBold
+                                        color: Theme.primary
+                                        anchors.horizontalCenter: parent.horizontalCenter
+                                    }
+                                }
                             }
 
-                            // Детали
+                            // 2. ИНФОРМАЦИЯ (Центр)
                             ColumnLayout {
                                 Layout.fillWidth: true
+                                Layout.alignment: Qt.AlignVCenter
                                 spacing: 4
 
                                 Text {
                                     text: modelData.premisesName
                                     font.bold: true
-                                    font.pixelSize: Theme.fontSizeMedium
+                                    font.pixelSize: 16
                                     color: Theme.textPrimary
                                     elide: Text.ElideRight
                                     Layout.fillWidth: true
                                 }
 
-                                Row {
-                                    spacing: 4
-                                    Text { text: "🪑"; font.pixelSize: 12 }
-                                    Text {
-                                        text: modelData.tableName
-                                        color: Theme.textSecondary
-                                        font.pixelSize: Theme.fontSizeSmall
-                                    }
-                                }
+                                RowLayout {
+                                    spacing: 12
 
-                                Row {
-                                    spacing: 4
-                                    Text { text: "🕒"; font.pixelSize: 12 }
-                                    Text {
-                                        // Время: "18:00 - 20:00"
-                                        text: modelData.startTime.substring(11, 16) + " - " + modelData.endTime.substring(11, 16)
-                                        color: Theme.textSecondary
-                                        font.pixelSize: Theme.fontSizeSmall
+                                    // Время
+                                    Row {
+                                        spacing: 4
+                                        Text { text: "🕒"; font.pixelSize: 12 }
+                                        Text {
+                                            text: getTime(modelData.startTime) + " - " + getTime(modelData.endTime)
+                                            color: Theme.textPrimary
+                                            font.bold: true
+                                            font.pixelSize: 13
+                                        }
+                                    }
+
+                                    // Стол
+                                    Row {
+                                        spacing: 4
+                                        Text { text: "🪑"; font.pixelSize: 12 }
+                                        Text {
+                                            text: modelData.tableName
+                                            color: Theme.textSecondary
+                                            font.pixelSize: 13
+                                        }
                                     }
                                 }
                             }
 
-                            // Кнопка отмены
-                            Button {
-                                text: "✕"
-                                Layout.preferredWidth: 40
-                                Layout.preferredHeight: 40
-                                background: Rectangle {
-                                    color: parent.pressed ? "#FFEBEE" : "transparent"
-                                    radius: 20
-                                    border.color: Theme.error
-                                    border.width: 1
-                                }
-                                contentItem: Text {
-                                    text: parent.text
+                            // 3. КНОПКА ОТМЕНЫ (Круглая справа)
+                            Rectangle {
+                                Layout.preferredWidth: 36
+                                Layout.preferredHeight: 36
+                                radius: 18
+                                color: cancelMouseArea.pressed ? "#FFEBEE" : "transparent"
+                                border.color: Theme.error
+                                border.width: 1
+                                Layout.alignment: Qt.AlignVCenter
+
+                                Text {
+                                    text: "✕"
                                     color: Theme.error
-                                    anchors.centerIn: parent
-                                    font.pixelSize: 16
+                                    font.pixelSize: 14
+                                    font.bold: true
+                                    anchors.centerIn: parent // Идеальный центр
+                                    anchors.verticalCenterOffset: -1 // Микро-коррекция для шрифта
                                 }
-                                onClicked: cancelBooking(modelData.id)
+
+                                MouseArea {
+                                    id: cancelMouseArea
+                                    anchors.fill: parent
+                                    onClicked: cancelBooking(modelData.id)
+                                }
                             }
                         }
                     }
                 }
 
-                // Заглушка, если пусто
+                // Заглушка (если нет броней)
                 Item {
                     Layout.fillWidth: true
-                    height: 100
+                    height: 120
                     visible: userBookings.length === 0
 
                     Column {
@@ -277,38 +301,32 @@ Page {
                         spacing: 8
                         Text {
                             text: "📅"
-                            font.pixelSize: 40
+                            font.pixelSize: 48
                             anchors.horizontalCenter: parent.horizontalCenter
-                            opacity: 0.5
+                            opacity: 0.3
                         }
                         Text {
                             text: "У вас пока нет активных бронирований"
-                            color: Theme.textSecondary
+                            color: Theme.textHint
                             font.pixelSize: Theme.fontSizeMedium
                         }
                     }
                 }
             }
 
-            // 3. МЕНЮ ДЕЙСТВИЙ (Внизу)
+            // --- НИЖНЕЕ МЕНЮ ---
             ColumnLayout {
                 Layout.fillWidth: true
                 Layout.margins: Theme.spacingMedium
-                Layout.topMargin: Theme.spacingLarge
+                Layout.topMargin: 20
                 spacing: Theme.spacingMedium
 
-                // Админские кнопки
                 ColumnLayout {
                     visible: userRole === "admin" || userRole === "superadmin"
                     Layout.fillWidth: true
                     spacing: Theme.spacingMedium
 
-                    Text {
-                        text: "Управление"
-                        font.bold: true
-                        color: Theme.textSecondary
-                        font.pixelSize: Theme.fontSizeSmall
-                    }
+                    Text { text: "Управление"; font.bold: true; color: Theme.textSecondary; font.pixelSize: 12 }
 
                     MaterialButton {
                         text: "Мои заведения"
@@ -328,14 +346,7 @@ Page {
                     }
                 }
 
-                // Общие кнопки
-                Text {
-                    text: "Приложение"
-                    font.bold: true
-                    color: Theme.textSecondary
-                    font.pixelSize: Theme.fontSizeSmall
-                    Layout.topMargin: 8
-                }
+                Text { text: "Приложение"; font.bold: true; color: Theme.textSecondary; font.pixelSize: 12; Layout.topMargin: 8 }
 
                 MaterialButton {
                     text: "О программе"
@@ -350,7 +361,12 @@ Page {
                     iconText: Theme.iconLogout
                     isFlat: true
                     Layout.fillWidth: true
-
+                    onClicked: {
+                        BackendApi.logout()
+                        var stack = profilePage.StackView.view
+                        stack.clear()
+                        stack.push("../LoginScreen.qml")
+                    }
                     contentItem: Text {
                         text: parent.text
                         color: Theme.error
@@ -358,13 +374,6 @@ Page {
                         font.bold: true
                         horizontalAlignment: Text.AlignHCenter
                         verticalAlignment: Text.AlignVCenter
-                    }
-
-                    onClicked: {
-                        BackendApi.logout() // Вызываем логаут в C++ (если есть метод, или просто чистим стек)
-                        var stack = profilePage.StackView.view
-                        stack.clear()
-                        stack.push("../LoginScreen.qml")
                     }
                 }
             }
