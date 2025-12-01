@@ -1,22 +1,38 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
-import QtQuick.Effects
 import com.tablebooker.api 1.0
 import "../components"
 import "../Theme.js" as Theme
 
 Page {
     id: page
+    title: premisesName
+    background: Rectangle { color: Theme.background }
+
     property int premisesId: -1
     property string premisesName: ""
-    property int selectedIndex: -1 // Индекс выделенного объекта в модели
 
-    title: premisesName
+    property int selectedIndex: -1
+    property bool isWideScreen: width > 600
 
     ListModel { id: tablesModel }
 
-    // --- ЛОГИКА ДАННЫХ (из вашего кода) ---
+    // --- АВТОСОХРАНЕНИЕ ---
+    Timer {
+        id: autoSaveTimer
+        interval: 1000
+        repeat: false
+        onTriggered: saveTables()
+    }
+
+    function scheduleSave() {
+        saveStatusLabel.text = "Сохранение..."
+        saveStatusLabel.color = Theme.textSecondary
+        autoSaveTimer.restart()
+    }
+
+    // --- ЛОГИКА ---
     function loadTables() {
         tablesModel.clear()
         var tables = BackendApi.getTablesForPremises(premisesId)
@@ -27,10 +43,13 @@ Page {
                 "width": t.width, "height": t.height,
                 "type": t.type || "table",
                 "rotation": t.rotation || 0,
-                "color": t.color || "#E0E0E0",
+                "color": t.color || "#81C784",
                 "shapeType": t.shapeType || "rect"
             })
         }
+        Qt.callLater(function(){
+            if (tables.length > 0) hallView.centerOnObjects()
+        })
     }
 
     function saveTables() {
@@ -44,861 +63,452 @@ Page {
                 "color": t.color, "shapeType": t.shapeType
             })
         }
-        BackendApi.saveTableLayout(premisesId, tablesToSave)
+        var success = BackendApi.saveTableLayout(premisesId, tablesToSave)
+        if (success) {
+            saveStatusLabel.text = "✓ Сохранено"
+            saveStatusLabel.color = Theme.success
+            resetStatusTimer.restart()
+        } else {
+            saveStatusLabel.text = "Ошибка сохранения!"
+            saveStatusLabel.color = Theme.error
+            console.log("Save failed. Hint: Reinstall app to update DB schema.")
+        }
     }
+    Timer { id: resetStatusTimer; interval: 2000; onTriggered: saveStatusLabel.text = "" }
 
-    // Умное добавление (адаптировано под мобилку)
     function addItem(itemType, w, h, namePrefix, shape, col) {
-        console.log("HallEditorPage.addItem called, type:", itemType, "current count:", tablesModel.count)
-        // Генерируем имя
         var newName = namePrefix
         if (itemType === "table") {
             var count = 0
-            for(var i=0; i<tablesModel.count; i++) {
-                if (tablesModel.get(i).type === "table") count++
-            }
-            newName = "T-" + (count + 1)
+            for(var i=0; i<tablesModel.count; i++) { if (tablesModel.get(i).type === "table") count++ }
+            newName = "Стол " + (count + 1)
         } else if (itemType === "room") {
-            var roomCount = 0
-            for(var i=0; i<tablesModel.count; i++) {
-                if (tablesModel.get(i).type === "room") roomCount++
-            }
-            newName = namePrefix || ("Зал " + (roomCount + 1))
-        } else if (itemType === "wc") {
-            newName = "WC"
+            var rCount = 0
+            for(var j=0; j<tablesModel.count; j++) { if (tablesModel.get(j).type === "room") rCount++ }
+            newName = namePrefix || ("Зал " + (rCount + 1))
         }
 
-        // Пока упрощаем: добавляем в разумный центр сцены
-        var centerX = 1500 - w / 2
-        var centerY = 1500 - h / 2
+        var center = hallView.viewportCenter()
 
         tablesModel.append({
             "dbId": -1, "name": newName,
-            "x": centerX, "y": centerY,
+            "x": center.x - w/2, "y": center.y - h/2,
             "width": w, "height": h,
             "rotation": 0, "type": itemType,
             "shapeType": shape, "color": col
         })
-        
-        // Автоматически выбираем новый элемент
+
         selectedIndex = tablesModel.count - 1
-        console.log("HallEditorPage.addItem appended, new index:", selectedIndex, "total:", tablesModel.count)
-        Qt.callLater(function() {
-            if (hallView && hallView.ensureItemVisible)
-                hallView.ensureItemVisible(selectedIndex)
+        scheduleSave()
+    }
+
+    function duplicateSelected() {
+        var item = getSelectedItem()
+        if (!item) return
+        tablesModel.append({
+            "dbId": -1, "name": item.name + " (копия)",
+            "x": item.x + 30, "y": item.y + 30,
+            "width": item.width, "height": item.height,
+            "rotation": item.rotation, "type": item.type,
+            "shapeType": item.shapeType, "color": item.color
         })
+        selectedIndex = tablesModel.count - 1
+        scheduleSave()
     }
 
     function modifySelected(param, value) {
         if (selectedIndex < 0) return
         var currentVal = tablesModel.get(selectedIndex)[param]
         tablesModel.setProperty(selectedIndex, param, currentVal + value)
+        scheduleSave()
     }
-    
+
     function setSelectedProperty(param, value) {
         if (selectedIndex < 0) return
-        tablesModel.setProperty(selectedIndex, param, value)
+        if (tablesModel.get(selectedIndex)[param] !== value) {
+            tablesModel.setProperty(selectedIndex, param, value)
+            scheduleSave()
+        }
     }
 
     function removeSelected() {
         if (selectedIndex >= 0) {
             tablesModel.remove(selectedIndex)
             selectedIndex = -1
+            scheduleSave()
         }
     }
 
     function getSelectedItem() {
-        if (selectedIndex >= 0 && selectedIndex < tablesModel.count) {
-            return tablesModel.get(selectedIndex)
-        }
+        if (selectedIndex >= 0 && selectedIndex < tablesModel.count) return tablesModel.get(selectedIndex)
         return null
     }
 
-    Component.onCompleted: {
-        loadTables()
-        // Центрируем на объектах после загрузки
-        Qt.callLater(function() {
-            if (tablesModel.count > 0 && hallView.centerOnObjects) {
-                hallView.centerOnObjects()
-            }
-        })
-    }
+    Component.onCompleted: loadTables()
 
-    // --- ИНТЕРФЕЙС ---
+    // --- UI ---
 
     header: ToolBar {
-        background: Rectangle { 
-            color: Theme.primary
-        }
+        background: Rectangle { color: Theme.surface }
         RowLayout {
             anchors.fill: parent
-            anchors.leftMargin: 8
-            
-            ToolButton { 
-                Text {
-                    text: Theme.iconBack
-                    font.pixelSize: 24
-                    color: "white"
-                    anchors.centerIn: parent
+            anchors.leftMargin: 8; anchors.rightMargin: 16
+
+            ToolButton {
+                Text { text: Theme.iconBack; font.pixelSize: 24; anchors.centerIn: parent; color: Theme.textPrimary }
+                onClicked: { saveTables(); page.StackView.view.pop() }
+            }
+
+            Column {
+                Layout.fillWidth: true
+                spacing: 0
+                Label {
+                    text: page.title
+                    font.bold: true; font.pixelSize: Theme.fontSizeLarge; color: Theme.textPrimary
+                    anchors.horizontalCenter: parent.horizontalCenter
                 }
-                onClicked: page.StackView.view.pop() 
+                Label {
+                    id: saveStatusLabel
+                    text: ""
+                    font.pixelSize: 10; color: Theme.textSecondary
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    font.bold: true
+                }
             }
-            Label { 
-                text: page.title
-                font.bold: true
-                font.pixelSize: Theme.fontSizeLarge
-                color: "white"
-                Layout.fillWidth: true 
-            }
-            Button {
-                text: Theme.iconSave + " Сохранить"
-                flat: true
-                font.bold: true
-                palette.buttonText: "white"
-                onClicked: saveTables()
+
+            ToolButton {
+                visible: selectedIndex >= 0
+                Text { text: "❐"; font.pixelSize: 20; anchors.centerIn: parent; color: Theme.primary }
+                onClicked: duplicateSelected()
             }
         }
     }
 
-    // 1. ОСНОВНОЕ ПОЛЕ (ЗУМ И СКРОЛЛ)
+    // 1. ХОЛСТ
     ZoomableHall {
         id: hallView
         anchors.fill: parent
-        anchors.rightMargin: propertiesPanel.visible ? propertiesPanel.width : 0
+        anchors.bottomMargin: (!isWideScreen && selectedIndex >= 0) ? propertySheet.height : 0
+        anchors.rightMargin: (isWideScreen && selectedIndex >= 0) ? propertySheet.width : 0
+
         tablesModel: tablesModel
         editMode: true
         selectedIndex: page.selectedIndex
-        z: 1
 
         onTableClicked: (idx, dbId) => {
             page.selectedIndex = idx
-            // Прокручиваем к выбранному элементу, чтобы он был виден
-            Qt.callLater(function() {
-                hallView.ensureItemVisible(idx)
-            })
+            addDrawer.close()
         }
 
-        onCanvasTapped: {
-            page.selectedIndex = -1 // Сброс выделения
-        }
-        
-        Behavior on anchors.rightMargin {
-            NumberAnimation { duration: 200; easing.type: Easing.OutCubic }
-        }
-    }
-    
-    // Отслеживаем изменения выбранного элемента для автоматической прокрутки
-    Connections {
-        target: page
-        function onSelectedIndexChanged() {
-            if (page.selectedIndex >= 0) {
-                Qt.callLater(function() {
-                    hallView.ensureItemVisible(page.selectedIndex)
-                })
-            }
-        }
+        onCanvasTapped: { page.selectedIndex = -1 }
+        onTableModified: scheduleSave()
+
+        Behavior on anchors.bottomMargin { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } }
+        Behavior on anchors.rightMargin { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } }
     }
 
-    // 2. ПАНЕЛЬ СВОЙСТВ (Справа для маленьких экранов)
-    Rectangle {
-        id: propertiesPanel
-        width: Math.min(320, parent.width * 0.4)
-        height: parent.height
-        color: Theme.surface
-        anchors.right: parent.right
-        anchors.top: parent.top
-        anchors.bottom: parent.bottom
-        visible: page.selectedIndex >= 0
-        z: 200
-        border.color: Theme.divider
-        border.width: 1
+    // 2. КНОПКА (+)
+    Item {
+        id: fabContainer
+        width: 56; height: 56
+        anchors.right: parent.right; anchors.bottom: parent.bottom
+        anchors.margins: 24
 
-        // Профессиональная тень слева
+        // Отступ снизу учитывает панель свойств
+        property int bottomOffset: (!isWideScreen && selectedIndex >= 0) ? propertySheet.height + 24 : 24
+        anchors.bottomMargin: bottomOffset
+
+        visible: !addDrawer.visible
+        property bool showClose: selectedIndex >= 0
+
         Rectangle {
-            anchors.top: parent.top
-            anchors.left: parent.left
-            anchors.bottom: parent.bottom
-            width: 16
-            z: -1
-            gradient: Gradient {
-                GradientStop { position: 0.0; color: "#30000000" }
-                GradientStop { position: 0.5; color: "#15000000" }
-                GradientStop { position: 1.0; color: "transparent" }
+            anchors.fill: parent; anchors.topMargin: 4
+            radius: 28; color: "#000000"; opacity: 0.2
+        }
+
+        Button {
+            anchors.fill: parent
+            background: Rectangle {
+                radius: 28
+                color: fabContainer.showClose ? Theme.surface : Theme.accent
+                border.width: fabContainer.showClose ? 1 : 0
+                border.color: Theme.divider
             }
+            contentItem: Text {
+                text: fabContainer.showClose ? "✕" : "＋"
+                font.pixelSize: 32;
+                color: fabContainer.showClose ? Theme.textPrimary : "white";
+                anchors.centerIn: parent
+                font.bold: true
+            }
+            onClicked: {
+                if (fabContainer.showClose) selectedIndex = -1
+                else addDrawer.open()
+            }
+        }
+
+        Behavior on anchors.bottomMargin { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } }
+    }
+
+    // 3. ПАНЕЛЬ СВОЙСТВ
+    Rectangle {
+        id: propertySheet
+        width: isWideScreen ? 320 : parent.width
+        height: isWideScreen ? parent.height : 320 // Чуть выше для удобства
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+
+        transform: Translate {
+            y: (!isWideScreen && selectedIndex < 0) ? propertySheet.height : 0
+            x: (isWideScreen && selectedIndex < 0) ? propertySheet.width : 0
+            Behavior on y { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } }
+            Behavior on x { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } }
+        }
+
+        color: Theme.surface
+
+        // Тень
+        Rectangle {
+            visible: !isWideScreen
+            anchors.bottom: parent.top; width: parent.width; height: 12
+            gradient: Gradient { GradientStop { position: 0.0; color: "transparent" } GradientStop { position: 1.0; color: "#15000000" } }
         }
 
         ScrollView {
             anchors.fill: parent
-            anchors.margins: 10
+            contentWidth: availableWidth // Блокируем горизонтальный скролл
+            ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
             clip: true
-            
-            ColumnLayout {
-                id: propertiesColumn
-                width: propertiesPanel.width - 20
-                spacing: 12
 
-                // Заголовок с именем объекта
+            ColumnLayout {
+                width: parent.width; anchors.margins: 16
+                spacing: 16
+
+                // Отступ сверху
+                Item { height: 8; width: 1 }
+
+                // Заголовок
                 RowLayout {
                     Layout.fillWidth: true
-                    spacing: 12
+                    Layout.leftMargin: 16; Layout.rightMargin: 16
 
-        Rectangle {
-                        width: 40
-                        height: 40
-                        radius: 20
-                        color: Theme.primary
-                        opacity: 0.1
-                        
-                        Text {
-                            text: "✏️"
-                            font.pixelSize: 20
-                            anchors.centerIn: parent
-                        }
-                    }
-
-                    Label { 
-                        text: {
-                            var item = getSelectedItem()
-                            if (item) return item.name || "Объект"
-                            return "Объект"
-                        }
-                        font.bold: true
-                        font.pixelSize: Theme.fontSizeLarge
-                        color: Theme.textPrimary
+                    TextField {
+                        text: getSelectedItem() ? getSelectedItem().name : ""
+                        placeholderText: "Название"
                         Layout.fillWidth: true
-                    }
+                        font.bold: true; font.pixelSize: Theme.fontSizeLarge
+                        color: "black" // Явный черный цвет
 
-            Button {
-                        width: 40
-                        height: 40
-                background: Rectangle {
-                            color: Theme.error
-                            radius: 20
+                        background: Rectangle {
+                            color: "transparent";
+                            border.width: parent.activeFocus ? 2 : 1;
+                            border.color: parent.activeFocus ? Theme.primary : Theme.divider;
+                            radius: 8
                         }
-                        contentItem: Text {
-                            text: Theme.iconDelete
-                            color: "white"
-                            font.pixelSize: 18
-                            anchors.centerIn: parent
-                        }
+                        onEditingFinished: setSelectedProperty("name", text)
+                    }
+                    Button {
+                        text: Theme.iconDelete; flat: true; palette.buttonText: Theme.error; font.pixelSize: 22;
                         onClicked: removeSelected()
                     }
                 }
-                
-                Rectangle {
-                    Layout.fillWidth: true
-                    height: 1
-                    color: Theme.divider
-                }
 
-                // Основные контролы - Вертикальная компоновка
+                Rectangle { height: 1; Layout.fillWidth: true; color: Theme.divider }
+
+                // Вращение
                 ColumnLayout {
                     Layout.fillWidth: true
-                    spacing: 12
+                    Layout.leftMargin: 16; Layout.rightMargin: 16
 
-                    // Поворот
-                    Column {
-                        Layout.fillWidth: true
-                        spacing: 4
-                        
-                        Label {
-                            text: "Поворот (°)"
-                            font.pixelSize: Theme.fontSizeSmall
-                            font.bold: true
-                            color: Theme.textSecondary
+                    Label { text: "Поворот"; color: Theme.textSecondary; font.pixelSize: 12 }
+                    RowLayout {
+                        spacing: 10; Layout.fillWidth: true
+                        Button {
+                            Layout.fillWidth: true; height: 40
+                            background: Rectangle { color: parent.pressed ? Theme.primaryDark : Theme.primary; radius: 8 }
+                            contentItem: Text { text: "↺ -45°"; color: "white"; font.bold: true; anchors.centerIn: parent }
+                            onClicked: modifySelected("rotation", -45)
                         }
-                        SpinBox {
-                            id: rotationSpinBox
-                            width: parent.width
-                            from: -360
-                            to: 360
-                            stepSize: 15
-                            value: {
-                                var item = getSelectedItem()
-                                return item ? item.rotation : 0
-                            }
-                            property bool updating: false
-                            onValueChanged: {
-                                if (!updating && selectedIndex >= 0) {
-                                    var item = getSelectedItem()
-                                    if (item && value !== item.rotation) {
-                                        setSelectedProperty("rotation", value)
-                                    }
-                                }
-                            }
-                            Component.onCompleted: {
-                                page.selectedIndexChanged.connect(function() {
-                                    updating = true
-                                    var item = getSelectedItem()
-                                    if (item) value = item.rotation
-                                    updating = false
-                                })
-                            }
-                            background: Rectangle {
-                                color: "#FFFFFF"
-                                radius: Theme.radiusSmall
-                                border.width: 2
-                                border.color: Theme.primary
-                            }
-                            contentItem: Text {
-                                text: rotationSpinBox.value
-                                font.pixelSize: Theme.fontSizeLarge
-                                font.bold: true
-                                color: "#212121"
-                                horizontalAlignment: Text.AlignHCenter
-                                verticalAlignment: Text.AlignVCenter
-                            }
-                        }
-                    }
-
-                    // Ширина
-                    Column {
-                        Layout.fillWidth: true
-                        spacing: 4
-                        
-                        Label {
-                            text: "Ширина"
-                            font.pixelSize: Theme.fontSizeSmall
-                            font.bold: true
-                            color: Theme.textSecondary
-                        }
-                        SpinBox {
-                            id: widthSpinBox
-                            width: parent.width
-                            from: 20
-                            to: 1000
-                            stepSize: 10
-                            value: {
-                                var item = getSelectedItem()
-                                return item ? item.width : 80
-                            }
-                            property bool updating: false
-                            onValueChanged: {
-                                if (!updating && selectedIndex >= 0) {
-                                    var item = getSelectedItem()
-                                    if (item && value !== item.width) {
-                                        setSelectedProperty("width", value)
-                                    }
-                                }
-                            }
-                            Component.onCompleted: {
-                                page.selectedIndexChanged.connect(function() {
-                                    updating = true
-                                    var item = getSelectedItem()
-                                    if (item) value = item.width
-                                    updating = false
-                                })
-                            }
-                            background: Rectangle {
-                                color: "#FFFFFF"
-                                radius: Theme.radiusSmall
-                                border.width: 2
-                                border.color: Theme.primary
-                            }
-                            contentItem: Text {
-                                text: widthSpinBox.value
-                                font.pixelSize: Theme.fontSizeLarge
-                                font.bold: true
-                                color: "#212121"
-                                horizontalAlignment: Text.AlignHCenter
-                                verticalAlignment: Text.AlignVCenter
-                            }
-                        }
-                    }
-
-                    // Высота
-                    Column {
-                        Layout.fillWidth: true
-                        spacing: 4
-
-            Label { 
-                            text: "Высота"
-                            font.pixelSize: Theme.fontSizeSmall
-                font.bold: true
-                color: Theme.textSecondary
-                        }
-                        SpinBox {
-                            id: heightSpinBox
-                            width: parent.width
-                            from: 20
-                            to: 1000
-                            stepSize: 10
-                            value: {
-                                var item = getSelectedItem()
-                                return item ? item.height : 80
-                            }
-                            property bool updating: false
-                            onValueChanged: {
-                                if (!updating && selectedIndex >= 0) {
-                                    var item = getSelectedItem()
-                                    if (item && value !== item.height) {
-                                        setSelectedProperty("height", value)
-                                    }
-                                }
-                            }
-                            Component.onCompleted: {
-                                page.selectedIndexChanged.connect(function() {
-                                    updating = true
-                                    var item = getSelectedItem()
-                                    if (item) value = item.height
-                                    updating = false
-                                })
-                            }
-                            background: Rectangle {
-                                color: "#FFFFFF"
-                                radius: Theme.radiusSmall
-                                border.width: 2
-                                border.color: Theme.primary
-                            }
-                            contentItem: Text {
-                                text: heightSpinBox.value
-                                font.pixelSize: Theme.fontSizeLarge
-                                font.bold: true
-                                color: "#212121"
-                                horizontalAlignment: Text.AlignHCenter
-                                verticalAlignment: Text.AlignVCenter
-                            }
+                        Button {
+                            Layout.fillWidth: true; height: 40
+                            background: Rectangle { color: parent.pressed ? Theme.primaryDark : Theme.primary; radius: 8 }
+                            contentItem: Text { text: "+45° ↻"; color: "white"; font.bold: true; anchors.centerIn: parent }
+                            onClicked: modifySelected("rotation", 45)
                         }
                     }
                 }
 
-                Rectangle {
+                // Цвет
+                ColumnLayout {
                     Layout.fillWidth: true
-                    height: 1
-                    color: Theme.divider
+                    Layout.leftMargin: 16; Layout.rightMargin: 16
+
+                    Label { text: "Цвет"; color: Theme.textSecondary; font.pixelSize: 12 }
+                    Flow {
+                        Layout.fillWidth: true; spacing: 12
+                        Repeater {
+                            model: ["#81C784", "#64B5F6", "#FFB74D", "#E57373", "#BA68C8", "#90A4AE", "#4E342E", "#F5F5F5"]
+                            delegate: Rectangle {
+                                width: 36; height: 36; radius: 18
+                                color: modelData
+                                border.width: (getSelectedItem() && getSelectedItem().color == modelData) ? 3 : 1
+                                border.color: (getSelectedItem() && getSelectedItem().color == modelData) ? Theme.primary : Theme.divider
+                                MouseArea { anchors.fill: parent; onClicked: setSelectedProperty("color", modelData) }
+                                Text {
+                                    text: "✓"; color: "white"; anchors.centerIn: parent; font.bold: true
+                                    visible: (getSelectedItem() && getSelectedItem().color == modelData)
+                                }
+                            }
+                        }
+                    }
                 }
 
-                // Быстрые кнопки поворота
-                RowLayout {
+                // Форма и размер
+                ColumnLayout {
                     Layout.fillWidth: true
-                    spacing: 8
+                    Layout.leftMargin: 16; Layout.rightMargin: 16
 
-                    Button {
-                        text: "↺ -15°"
+                    Label { text: "Параметры (Ш x В)"; color: Theme.textSecondary; font.pixelSize: 12 }
+                    RowLayout {
                         Layout.fillWidth: true
-                        height: 36
-                        background: Rectangle {
-                            color: parent.pressed ? Theme.primaryDark : Theme.primary
-                            radius: Theme.radiusSmall
-                        }
-                        contentItem: Text {
-                            text: parent.text
-                            color: "white"
-                            font.pixelSize: Theme.fontSizeSmall
-                            font.bold: true
-                            horizontalAlignment: Text.AlignHCenter
-                        }
-                        onClicked: modifySelected("rotation", -15)
-                    }
 
-                    Button {
-                        text: "↻ +15°"
-                        Layout.fillWidth: true
-                        height: 36
-                        background: Rectangle {
-                            color: parent.pressed ? Theme.primaryDark : Theme.primary
-                            radius: Theme.radiusSmall
+                        Button {
+                            text: "⬜"; Layout.preferredWidth: 50
+                            background: Rectangle { color: (getSelectedItem() && getSelectedItem().shapeType === "rect") ? Theme.primaryLight : "transparent"; radius: 4; border.width: 1; border.color: Theme.divider }
+                            onClicked: setSelectedProperty("shapeType", "rect");
                         }
-                        contentItem: Text {
-                            text: parent.text
-                            color: "white"
-                            font.pixelSize: Theme.fontSizeSmall
-                            font.bold: true
-                            horizontalAlignment: Text.AlignHCenter
+                        Button {
+                            text: "⚪"; Layout.preferredWidth: 50
+                            background: Rectangle { color: (getSelectedItem() && getSelectedItem().shapeType === "ellipse") ? Theme.primaryLight : "transparent"; radius: 4; border.width: 1; border.color: Theme.divider }
+                            onClicked: setSelectedProperty("shapeType", "ellipse");
                         }
-                        onClicked: modifySelected("rotation", 15)
-            }
 
-            Button {
-                        text: "↺ -45°"
-                        Layout.fillWidth: true
-                        height: 36
-                background: Rectangle {
-                            color: parent.pressed ? Theme.primaryDark : Theme.primary
-                    radius: Theme.radiusSmall
-                }
-                contentItem: Text {
-                    text: parent.text
-                            color: "white"
-                            font.pixelSize: Theme.fontSizeSmall
-                            font.bold: true
-                            horizontalAlignment: Text.AlignHCenter
-                        }
-                        onClicked: modifySelected("rotation", -45)
-            }
+                        Item { Layout.fillWidth: true }
 
-            Button {
-                        text: "↻ +45°"
-                        Layout.fillWidth: true
-                        height: 36
-                background: Rectangle {
-                            color: parent.pressed ? Theme.primaryDark : Theme.primary
-                    radius: Theme.radiusSmall
-                }
-                contentItem: Text {
-                    text: parent.text
-                    color: "white"
-                            font.pixelSize: Theme.fontSizeSmall
-                            font.bold: true
-                            horizontalAlignment: Text.AlignHCenter
+                        // Поля размеров с ЧЕРНЫМ текстом
+                        SpinBox {
+                            id: wSpin
+                            from: 10; to: 1000; stepSize: 10
+                            value: getSelectedItem() ? getSelectedItem().width : 0
+                            onValueModified: setSelectedProperty("width", value)
+                            Layout.preferredWidth: 90
+                            editable: true
+
+                            contentItem: TextInput {
+                                text: wSpin.textFromValue(wSpin.value, wSpin.locale)
+                                font.pixelSize: Theme.fontSizeMedium
+                                color: "black" // Черный цвет
+                                selectionColor: Theme.primary
+                                horizontalAlignment: Qt.AlignHCenter
+                                verticalAlignment: Qt.AlignVCenter
+                                readOnly: !wSpin.editable
+                                validator: wSpin.validator
+                                inputMethodHints: Qt.ImhDigitsOnly
+                            }
                         }
-                        onClicked: modifySelected("rotation", 45)
+
+                        Text { text: "x"; color: "black" }
+
+                        SpinBox {
+                            id: hSpin
+                            from: 10; to: 1000; stepSize: 10
+                            value: getSelectedItem() ? getSelectedItem().height : 0
+                            onValueModified: setSelectedProperty("height", value)
+                            Layout.preferredWidth: 90
+                            editable: true
+
+                            contentItem: TextInput {
+                                text: hSpin.textFromValue(hSpin.value, hSpin.locale)
+                                font.pixelSize: Theme.fontSizeMedium
+                                color: "black" // Черный цвет
+                                selectionColor: Theme.primary
+                                horizontalAlignment: Qt.AlignHCenter
+                                verticalAlignment: Qt.AlignVCenter
+                                readOnly: !hSpin.editable
+                                validator: hSpin.validator
+                                inputMethodHints: Qt.ImhDigitsOnly
+                            }
+                        }
                     }
                 }
-            }
-        }
 
-        Behavior on width {
-            NumberAnimation { duration: 200; easing.type: Easing.OutCubic }
+                Item { height: 20; Layout.fillWidth: true } // Отступ снизу
+            }
         }
     }
 
-    // 3. FAB - Кнопка "Добавить" (Скрываем, если открыта панель свойств или drawer)
-    Rectangle {
-        id: fabButton
-        width: 56
-        height: 56
-        radius: 28
-        color: Theme.accent
-        anchors.bottom: parent.bottom
-        anchors.right: parent.right
-        anchors.bottomMargin: addDrawer.isOpen ? addDrawer.height + 16 : 16
-        anchors.rightMargin: propertiesPanel.visible ? propertiesPanel.width + 16 : 16
-        visible: page.selectedIndex === -1 && !addDrawer.isOpen
-        z: 1000
-        
-        // Профессиональная тень для FAB
-        Rectangle {
-            anchors.fill: parent
-            anchors.margins: -2
-            z: -1
-            color: "#40000000"
-            radius: parent.radius + 2
-        }
-        
-        Text {
-            text: Theme.iconAdd
-            font.pixelSize: 28
-            color: "white"
-            anchors.centerIn: parent
-        }
-        
-        MouseArea {
-            id: fabMouseArea
-            anchors.fill: parent
-            onClicked: addDrawer.open()
-            
-            states: [
-                State {
-                    name: "pressed"
-                    when: fabMouseArea.pressed
-                    PropertyChanges { target: fabButton; scale: 0.9 }
-                }
-            ]
-        }
-        
-        Behavior on scale {
-            NumberAnimation { duration: 150 }
-        }
-        
-        Behavior on anchors.rightMargin {
-            NumberAnimation { duration: 200; easing.type: Easing.OutCubic }
-        }
-    }
-
-    // 4. МЕНЮ ДОБАВЛЕНИЯ (Drawer) - Исправленная версия
-    Rectangle {
+    // 4. МЕНЮ ДОБАВЛЕНИЯ (ИСПРАВЛЕННОЕ)
+    Drawer {
         id: addDrawer
-        width: parent.width
-        height: Math.min(500, parent.height * 0.7)
-        anchors.bottom: parent.bottom
-        anchors.left: parent.left
-        anchors.right: parent.right
-        color: Theme.surface
-        z: 1500
-        visible: false
-        
-        // Скругление сверху
-        Rectangle {
-            anchors.top: parent.top
-            anchors.left: parent.left
-            anchors.right: parent.right
-            height: Theme.radiusLarge
-            color: parent.color
-        }
-        
-        // Тень сверху
-        Rectangle {
-            anchors.top: parent.top
-            anchors.left: parent.left
-            anchors.right: parent.right
-            height: 12
-            z: -1
-            gradient: Gradient {
-                GradientStop { position: 0.0; color: "#20000000" }
-                GradientStop { position: 1.0; color: "transparent" }
-            }
-        }
-        
-        property bool isOpen: false
-        
-        function open() {
-            isOpen = true
-            visible = true
-        }
-        
-        function close() {
-            isOpen = false
-            visible = false
-        }
-        
-        y: isOpen ? parent.height - height : parent.height
+        width: isWideScreen ? 360 : parent.width
+        height: parent.height
+        edge: isWideScreen ? Qt.RightEdge : Qt.BottomEdge
+        interactive: true
 
-        Behavior on y {
-            NumberAnimation { duration: 300; easing.type: Easing.OutCubic }
+        property real mobileHeight: 400
+        y: isWideScreen ? 0 : (visible ? parent.height - mobileHeight : parent.height)
+
+        background: Rectangle {
+            color: Theme.surface; radius: isWideScreen ? 0 : 16
         }
-        
+
         ColumnLayout {
-            anchors.fill: parent
-            anchors.margins: Theme.spacingMedium
-            spacing: Theme.spacingMedium
+            anchors.fill: parent; anchors.margins: 16; spacing: 16
 
-            // Заголовок
-            RowLayout {
-                Layout.fillWidth: true
-                
-                Text {
-                    text: Theme.iconAdd
-                    font.pixelSize: 28
-                    color: Theme.textPrimary
-                }
-                
-                Label { 
-                    text: "Добавить объект"
-                    font.bold: true
-                    font.pixelSize: Theme.fontSizeLarge
-                    color: Theme.textPrimary
-                    Layout.fillWidth: true
-                }
-                
-                ToolButton {
-                    width: 40
-                    height: 40
-                    Text {
-                        text: Theme.iconClose
-                        font.pixelSize: 24
-                        color: Theme.textSecondary
-                        anchors.centerIn: parent
-                    }
-                    onClicked: addDrawer.close()
-                }
-            }
-            
+            // Ручка (mobile only)
             Rectangle {
-                Layout.fillWidth: true
-                height: 1
-                color: Theme.divider
+                visible: !isWideScreen
+                Layout.alignment: Qt.AlignHCenter
+                width: 40; height: 4; radius: 2; color: Theme.divider
             }
 
-            ScrollView {
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-                clip: true
-                
-                GridLayout {
-                    width: addDrawer.width - Theme.spacingMedium * 2
-                    columns: 2
-                    columnSpacing: Theme.spacingSmall
-                    rowSpacing: Theme.spacingSmall
+            Label { text: "Добавить объект"; font.bold: true; font.pixelSize: Theme.fontSizeLarge; color: "black"; Layout.alignment: Qt.AlignHCenter }
 
-                // Столы
-                Button { 
-                    text: Theme.iconTable + "\nСтол (Круг)"
-                    Layout.fillWidth: true
-                        Layout.preferredHeight: 90
-                    background: Rectangle {
-                        color: Theme.primaryLight
-                        radius: Theme.radiusMedium
-                            border.width: 1
-                            border.color: Theme.divider
-                    }
-                    contentItem: Text {
-                        text: parent.text
-                        color: Theme.textPrimary
-                        font.pixelSize: Theme.fontSizeMedium
-                        horizontalAlignment: Text.AlignHCenter
-                        verticalAlignment: Text.AlignVCenter
-                    }
-                    onClicked: { 
-                        console.log("Add button pressed: round table")
-                        addItem("table", 50, 50, "", "ellipse", "#FFF59D"); 
-                        addDrawer.close()
-                    } 
-                }
-                
-                Button { 
-                    text: Theme.iconTable + "\nСтол (Квадрат)"
-                    Layout.fillWidth: true
-                        Layout.preferredHeight: 90
-                    background: Rectangle {
-                        color: Theme.primaryLight
-                        radius: Theme.radiusMedium
-                            border.width: 1
-                            border.color: Theme.divider
-                    }
-                    contentItem: Text {
-                        text: parent.text
-                        color: Theme.textPrimary
-                        font.pixelSize: Theme.fontSizeMedium
-                        horizontalAlignment: Text.AlignHCenter
-                        verticalAlignment: Text.AlignVCenter
-                    }
-                    onClicked: { 
-                        console.log("Add button pressed: square table")
-                        addItem("table", 50, 50, "", "rect", "#FFF59D"); 
-                        addDrawer.close()
-                    } 
-                }
-                
-                // Комната (пол)
-                Button { 
-                    text: "🏢\nКомната"
-                    Layout.fillWidth: true
-                        Layout.preferredHeight: 90
-                    background: Rectangle {
-                        color: Theme.surfaceDark
-                        radius: Theme.radiusMedium
-                            border.width: 1
-                            border.color: Theme.divider
-                    }
-                    contentItem: Text {
-                        text: parent.text
-                        color: Theme.textPrimary
-                        font.pixelSize: Theme.fontSizeMedium
-                        horizontalAlignment: Text.AlignHCenter
-                        verticalAlignment: Text.AlignVCenter
-                    }
-                    onClicked: { 
-                        console.log("Add button pressed: room")
-                        addItem("room", 400, 300, "Зал", "rect", "#F5F5F5"); 
-                        addDrawer.close() 
-                    } 
-                }
+            GridLayout {
+                columns: 3
+                Layout.fillWidth: true; rowSpacing: 20; columnSpacing: 16
 
-                // Стены и окна
-                Button { 
-                    text: "🧱\nСтена"
-                    Layout.fillWidth: true
-                        Layout.preferredHeight: 90
-                    background: Rectangle {
-                        color: Theme.surfaceDark
-                        radius: Theme.radiusMedium
-                            border.width: 1
-                            border.color: Theme.divider
+                Repeater {
+                    model: ListModel {
+                        // Исправил иконки и названия
+                        ListElement { type: "table"; label: "Стол (Кв.)"; icon: "⬛"; w: 80; h: 80; color: "#81C784"; shape: "rect" }
+                        ListElement { type: "table_round"; label: "Стол (Кр.)"; icon: "●"; w: 80; h: 80; color: "#81C784"; shape: "ellipse" }
+                        ListElement { type: "room"; label: "Пол (Зал)"; icon: "⬚"; w: 300; h: 200; color: "#F5F5F5"; shape: "rect" }
+                        ListElement { type: "wall"; label: "Стена"; icon: "▬"; w: 120; h: 15; color: "#424242"; shape: "rect" }
+                        ListElement { type: "window"; label: "Окно"; icon: "🪟"; w: 80; h: 15; color: "#81D4FA"; shape: "rect" }
+                        ListElement { type: "wc"; label: "WC"; icon: "🚽"; w: 60; h: 60; color: "#E0E0E0"; shape: "rect" }
+                        ListElement { type: "plant"; label: "Декор"; icon: "🌿"; w: 50; h: 50; color: "transparent"; shape: "rect" }
                     }
-                    contentItem: Text {
-                        text: parent.text
-                        color: Theme.textPrimary
-                        font.pixelSize: Theme.fontSizeMedium
-                        horizontalAlignment: Text.AlignHCenter
-                        verticalAlignment: Text.AlignVCenter
-                    }
-                    onClicked: { 
-                        console.log("Add button pressed: wall")
-                        addItem("wall", 150, 10, "", "rect", "#424242"); 
-                        addDrawer.close() 
-                    } 
-                }
-                
-                Button { 
-                    text: "🪟\nОкно"
-                    Layout.fillWidth: true
-                        Layout.preferredHeight: 90
-                    background: Rectangle {
-                        color: Theme.surfaceDark
-                        radius: Theme.radiusMedium
-                            border.width: 1
-                            border.color: Theme.divider
-                    }
-                    contentItem: Text {
-                        text: parent.text
-                        color: Theme.textPrimary
-                        font.pixelSize: Theme.fontSizeMedium
-                        horizontalAlignment: Text.AlignHCenter
-                        verticalAlignment: Text.AlignVCenter
-                    }
-                    onClicked: { 
-                        console.log("Add button pressed: window")
-                        addItem("window", 100, 15, "", "rect", "#81D4FA"); 
-                        addDrawer.close() 
-                    } 
-                }
 
-                // Прочее
-                Button { 
-                    text: "🚻\nWC"
-                    Layout.fillWidth: true
-                        Layout.preferredHeight: 90
-                    background: Rectangle {
-                        color: Theme.surfaceDark
-                        radius: Theme.radiusMedium
-                            border.width: 1
-                            border.color: Theme.divider
-                    }
-                    contentItem: Text {
-                        text: parent.text
-                        color: Theme.textPrimary
-                        font.pixelSize: Theme.fontSizeMedium
-                        horizontalAlignment: Text.AlignHCenter
-                        verticalAlignment: Text.AlignVCenter
-                    }
-                    onClicked: { 
-                        console.log("Add button pressed: wc")
-                        addItem("wc", 50, 50, "WC", "rect", "#FFFFFF"); 
-                        addDrawer.close() 
-                    } 
-                }
-                
-                Button { 
-                    text: "🌿\nДекор"
-                    Layout.fillWidth: true
-                        Layout.preferredHeight: 90
-                    background: Rectangle {
-                        color: Theme.surfaceDark
-                        radius: Theme.radiusMedium
-                            border.width: 1
-                            border.color: Theme.divider
-                    }
-                    contentItem: Text {
-                        text: parent.text
-                        color: Theme.textPrimary
-                        font.pixelSize: Theme.fontSizeMedium
-                        horizontalAlignment: Text.AlignHCenter
-                        verticalAlignment: Text.AlignVCenter
-                    }
-                    onClicked: { 
-                        console.log("Add button pressed: plant")
-                        addItem("plant", 40, 40, "", "rect", "transparent"); 
-                        addDrawer.close() 
-                    } 
+                    delegate: Column {
+                        spacing: 6
+                        Layout.alignment: Qt.AlignHCenter
+                        Layout.fillWidth: true
+
+                        Rectangle {
+                            width: 64; height: 64; radius: 16
+                            color: Theme.surfaceDark
+                            border.color: mouseA.pressed ? Theme.primary : Theme.divider
+                            border.width: mouseA.pressed ? 2 : 1
+                            anchors.horizontalCenter: parent.horizontalCenter
+
+                            Text { text: model.icon; font.pixelSize: 32; anchors.centerIn: parent }
+
+                            MouseArea {
+                                id: mouseA
+                                anchors.fill: parent
+                                onClicked: {
+                                    var realType = (model.type === "table_round") ? "table" : model.type
+                                    addItem(realType, model.w, model.h, "", model.shape, model.color)
+                                    addDrawer.close()
+                                }
+                            }
+                        }
+                        Text { text: model.label; font.pixelSize: 12; color: Theme.textPrimary; anchors.horizontalCenter: parent.horizontalCenter }
                     }
                 }
             }
-        }
-    }
-
-    // Прозрачная зона для закрытия по клику вне карточки (отдельным слоем поверх страницы)
-    Rectangle {
-        anchors.top: parent.top
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.bottom: addDrawer.top
-        color: "transparent"
-        z: 1499
-        visible: addDrawer.isOpen
-        MouseArea {
-            anchors.fill: parent
-            onClicked: addDrawer.close()
+            Item { Layout.fillHeight: true }
         }
     }
 }

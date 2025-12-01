@@ -1,210 +1,125 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
-import QtQuick.Effects
 
 Item {
     id: root
 
-    // Данные из модели
     property int dbId: -1
     property string itemName: ""
-    property string type: "table" // table, wall, window, etc.
+    property string type: "table"
     property string shapeType: "rect"
     property color itemColor: "#FFFFFF"
 
     property bool isEditable: false
     property bool isSelected: false
 
-    // Сигналы
     signal clicked()
     signal moved(int newX, int newY)
     signal resized(int newW, int newH)
     signal interactionStarted()
     signal interactionEnded()
-    // Вращение теперь меняется снаружи, но можно добавить логику и здесь
 
-    // Важно: привязка размеров и вращения к свойствам Item
-    // width и height управляются извне или DragHandler-ом
+    property int gridSize: 10
+    property int minSize: 20
 
-    z: isSelected ? 1000 : (type === "room" ? -1 : 10) // Пол ниже, столы выше
+    z: isSelected ? 1000 : (type === "room" ? -1 : 10)
 
-    // Визуальное тело
+    // Тело
     Rectangle {
         id: body
         anchors.fill: parent
         color: root.itemColor
-        border.color: root.isSelected ? "#2962FF" : "#616161"
-        border.width: root.isSelected ? 3 : 1
+        border.color: root.isSelected ? "#2962FF" : (root.type === "room" ? "#E0E0E0" : "#757575")
+        border.width: root.isSelected ? 2 : 1
         radius: root.shapeType === "ellipse" ? width / 2 : 0
-        opacity: root.type === "plant" ? 0.7 : 1.0
+        opacity: root.type === "plant" ? 0.8 : 1.0
 
-        // Тень (только для мебели, не для пола)
-        Rectangle {
-            visible: root.type !== "room" && root.type !== "floor"
-            anchors.fill: parent
-            anchors.margins: -3
-            z: -1
-            color: "#40000000"
-            radius: parent.radius + 3
-            opacity: 0.3
+        Rectangle { // Тень
+            visible: root.type !== "room" && root.type !== "floor" && root.type !== "wall"
+            anchors.fill: parent; anchors.margins: -4; z: -1
+            color: "#000000"; opacity: 0.15; radius: parent.radius + 4
         }
 
-        // Текст (имя стола или метка WC)
         Text {
             anchors.centerIn: parent
             text: root.itemName
-            visible: root.type === "table" || root.type === "wc"
-            font.pixelSize: Math.max(10, Math.min(14, root.width * 0.15))
+            visible: root.type === "table" || root.type === "wc" || root.type === "room"
+            font.pixelSize: Math.max(10, Math.min(14, root.width * 0.2))
             font.bold: true
-            color: root.type === "table" ? "#212121" : "#616161"
-            rotation: -root.rotation // Чтобы текст оставался горизонтальным (опционально)
+            color: (root.type === "room") ? "#BDBDBD" : "#212121"
+            rotation: -root.rotation
         }
-
-        // Иконка для декора (пример)
-        Text {
-            anchors.centerIn: parent
-            text: "🌿"
-            visible: root.type === "plant"
-            font.pixelSize: Math.min(root.width, root.height) * 0.6
-        }
+        Text { anchors.centerIn: parent; text: "🌿"; visible: root.type === "plant"; font.pixelSize: Math.min(root.width, root.height)*0.6; rotation: -root.rotation }
     }
 
-    // Единый обработчик клика и перетаскивания
+    // Индикатор размера
+    Rectangle {
+        anchors.bottom: parent.top; anchors.bottomMargin: 8; anchors.horizontalCenter: parent.horizontalCenter
+        width: sizeText.width + 16; height: 24; radius: 4; color: "#212121"; z: 2000
+        visible: (dragArea.drag.active || resizeMouseArea.pressed)
+        Text { id: sizeText; text: Math.round(root.width) + " x " + Math.round(root.height); color: "white"; font.bold: true; font.pixelSize: 12; anchors.centerIn: parent }
+    }
+
+    // Драг и Клик
     MouseArea {
-        id: mainMouseArea
+        id: dragArea
         anchors.fill: parent
-        acceptedButtons: Qt.LeftButton
-        drag.target: root.isEditable && root.type !== "room" && root.type !== "floor" ? root : null
+        drag.target: root.isEditable && root.type !== "room" ? root : null
         drag.axis: Drag.XAndYAxis
-        drag.minimumX: 0
-        drag.minimumY: 0
-        hoverEnabled: true
-        
-        onPressed: root.interactionStarted()
-        onClicked: root.clicked()
-        
+        drag.threshold: 10 // Увеличил порог для мобилок
+
+        onPressed: {
+            root.interactionStarted()
+            // Сразу сообщаем о клике, чтобы обновить selectedIndex в родителе
+            root.clicked()
+        }
+
         onReleased: {
             root.interactionEnded()
-            if (root.isEditable) {
-                // Применяем сетку при отпускании (сетка 10px)
-                root.x = Math.round(root.x / 10) * 10
-                root.y = Math.round(root.y / 10) * 10
+            if (root.isEditable && root.type !== "room") {
+                root.x = Math.round(root.x / root.gridSize) * root.gridSize
+                root.y = Math.round(root.y / root.gridSize) * root.gridSize
                 root.moved(root.x, root.y)
             }
         }
-
-        onCanceled: root.interactionEnded()
-        
-        onPositionChanged: {
-            if (pressed && root.isEditable) {
-                // Применяем сетку во время перетаскивания для плавности
-                root.x = Math.round(root.x / 10) * 10
-                root.y = Math.round(root.y / 10) * 10
-            }
-        }
     }
 
-    // РУЧКА ИЗМЕНЕНИЯ РАЗМЕРА (Resize Handle) - Исправленная версия
+    // Ресайз (только если выбран)
     Rectangle {
-        id: resizeHandle
-        width: 20; height: 20
-        color: "#2196F3"
-        anchors.bottom: parent.bottom
-        anchors.right: parent.right
-        radius: 10
+        width: 24; height: 24
+        color: "#2962FF"; radius: 12
+        anchors.bottom: parent.bottom; anchors.right: parent.right
+        anchors.margins: -8 // Вылезает за границы для удобства хватания
         visible: root.isEditable && root.isSelected && root.type !== "plant" && root.type !== "room"
-        z: 1000
-        border.width: 3
-        border.color: "white"
-        
-        // Внутренний индикатор
-        Rectangle {
-            anchors.centerIn: parent
-            width: 8
-            height: 8
-            radius: 4
-            color: "white"
-            opacity: 0.8
-        }
+        z: 2000
+        border.width: 2; border.color: "white"
 
         MouseArea {
             id: resizeMouseArea
             anchors.fill: parent
-            anchors.margins: -6 // Увеличиваем область клика для удобства
+            anchors.margins: -10 // Большая зона клика
             cursorShape: Qt.SizeFDiagCursor
-            property real startW: 0
-            property real startH: 0
-            property real startRootX: 0
-            property real startRootY: 0
-            property real startMouseX: 0
-            property real startMouseY: 0
-            
+
+            property real startX: 0; property real startY: 0
+
             onPressed: (mouse) => {
                 root.interactionStarted()
-                startW = root.width
-                startH = root.height
-                startRootX = root.x
-                startRootY = root.y
-                // Сохраняем координаты мыши относительно родителя TableWidget
-                startMouseX = mouse.x
-                startMouseY = mouse.y
-            }
-            
-            onPositionChanged: (mouse) => {
-                if (pressed) {
-                    // Вычисляем дельту относительно начальной позиции мыши
-                    var deltaX = mouse.x - startMouseX
-                    var deltaY = mouse.y - startMouseY
-                    
-                    // Применяем сетку 10px
-                    var newW = Math.max(20, Math.round((startW + deltaX) / 10) * 10)
-                    var newH = Math.max(20, Math.round((startH + deltaY) / 10) * 10)
-                    
-                    root.width = newW
-                    root.height = newH
-                    root.resized(newW, newH)
-                }
+                var globalPos = mapToItem(root.parent, mouse.x, mouse.y)
+                startX = globalPos.x
+                startY = globalPos.y
             }
 
+            onPositionChanged: (mouse) => {
+                if (pressed) {
+                    var globalPos = mapToItem(root.parent, mouse.x, mouse.y)
+                    var newWidth = Math.round((globalPos.x - root.x) / root.gridSize) * root.gridSize
+                    var newHeight = Math.round((globalPos.y - root.y) / root.gridSize) * root.gridSize
+                    root.width = Math.max(root.minSize, newWidth)
+                    root.height = Math.max(root.minSize, newHeight)
+                    root.resized(root.width, root.height)
+                }
+            }
             onReleased: root.interactionEnded()
-            onCanceled: root.interactionEnded()
         }
-    }
-    
-    // Дополнительные ручки для изменения размера (опционально, для больших объектов)
-    Rectangle {
-        width: 12; height: 12
-        color: "#2196F3"
-        anchors.top: parent.top
-        anchors.right: parent.right
-        radius: 6
-        visible: root.isEditable && root.isSelected && root.type !== "plant" && root.type !== "room" && root.width > 100
-        z: 1000
-        border.width: 2
-        border.color: "white"
-    }
-    
-    Rectangle {
-        width: 12; height: 12
-        color: "#2196F3"
-        anchors.bottom: parent.bottom
-        anchors.left: parent.left
-        radius: 6
-        visible: root.isEditable && root.isSelected && root.type !== "plant" && root.type !== "room" && root.width > 100
-        z: 1000
-        border.width: 2
-        border.color: "white"
-    }
-    
-    Rectangle {
-        width: 12; height: 12
-        color: "#2196F3"
-        anchors.top: parent.top
-        anchors.left: parent.left
-        radius: 6
-        visible: root.isEditable && root.isSelected && root.type !== "plant" && root.type !== "room" && root.width > 100
-        z: 1000
-        border.width: 2
-        border.color: "white"
     }
 }
