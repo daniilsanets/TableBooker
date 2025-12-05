@@ -240,3 +240,8 @@ bool AppBackend::changeUserRole(int userId, bool makeAdmin)
     QString newRole = makeAdmin ? "admin" : "user";
     return DatabaseManager::instance()->updateUserRole(userId, newRole);
 }
+
+bool AppBackend::deletePremises(int id)
+{
+    return DatabaseManager::instance()->deletePremises(id);
+}

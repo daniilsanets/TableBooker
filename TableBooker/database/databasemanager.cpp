@@ -463,3 +463,40 @@ bool DatabaseManager::updateUserRole(int userId, const QString &newRole)
     query.bindValue(":id", userId);
     return query.exec();
 }
+
+bool DatabaseManager::deletePremises(int id)
+{
+    m_db.transaction();
+
+    QSqlQuery query;
+
+    // 1. Сначала удаляем бронирования для столов этого заведения
+    // (Находим столы этого заведения и удаляем их брони)
+    query.prepare("DELETE FROM bookings WHERE table_id IN (SELECT id FROM tables WHERE premises_id = :id)");
+    query.bindValue(":id", id);
+    if (!query.exec()) {
+        qDebug() << "Failed to delete dependent bookings:" << query.lastError();
+        m_db.rollback();
+        return false;
+    }
+
+    // 2. Удаляем столы этого заведения
+    query.prepare("DELETE FROM tables WHERE premises_id = :id");
+    query.bindValue(":id", id);
+    if (!query.exec()) {
+        qDebug() << "Failed to delete dependent tables:" << query.lastError();
+        m_db.rollback();
+        return false;
+    }
+
+    // 3. Наконец, удаляем само заведение
+    query.prepare("DELETE FROM premises WHERE id = :id");
+    query.bindValue(":id", id);
+    if (!query.exec()) {
+        qDebug() << "Failed to delete premises:" << query.lastError();
+        m_db.rollback();
+        return false;
+    }
+
+    return m_db.commit();
+}

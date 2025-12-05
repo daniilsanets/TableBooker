@@ -15,6 +15,7 @@ Page {
     }
 
     property var premisesModel: []
+    property int premiseIdToDelete: -1
 
     function refreshData() {
         var adminId = BackendApi.currentUserId
@@ -22,9 +23,21 @@ Page {
         premisesModel = BackendApi.getPremisesForAdmin(adminId)
     }
 
+    function deletePremise() {
+        if (premiseIdToDelete !== -1) {
+            var success = BackendApi.deletePremises(premiseIdToDelete)
+            if (success) {
+                console.log("Заведение удалено")
+                refreshData()
+            } else {
+                console.log("Ошибка удаления")
+            }
+            premiseIdToDelete = -1
+        }
+    }
+
     Component.onCompleted: refreshData()
 
-    // Hide standard header
     header: Item { height: 0 }
 
     ColumnLayout {
@@ -42,7 +55,6 @@ Page {
                 GradientStop { position: 1.0; color: Theme.primary }
             }
 
-            // Decor
             Rectangle { width: 200; height: 200; radius: 100; color: "white"; opacity: 0.05; x: -50; y: -50 }
             Rectangle { width: 120; height: 120; radius: 60; color: "white"; opacity: 0.05; x: parent.width - 60; y: 30 }
 
@@ -51,7 +63,6 @@ Page {
                 anchors.margins: Theme.spacingMedium
                 spacing: 4
 
-                // Top Bar
                 RowLayout {
                     Layout.fillWidth: true
 
@@ -63,7 +74,6 @@ Page {
                         Layout.fillWidth: true
                     }
 
-                    // Profile Button
                     Rectangle {
                         width: 40; height: 40; radius: 20
                         color: "#30FFFFFF"
@@ -77,7 +87,6 @@ Page {
                     }
                 }
 
-                // Stats / Welcome text
                 Text {
                     text: "Управляйте заведениями и планировкой"
                     color: "#CCFFFFFF"
@@ -106,7 +115,6 @@ Page {
                     Layout.margins: 16
                     spacing: 12
 
-                    // Card: Add New
                     Rectangle {
                         Layout.fillWidth: true
                         height: 100
@@ -126,7 +134,6 @@ Page {
                         MouseArea { anchors.fill: parent; onClicked: createDialog.open() }
                     }
 
-                    // Card: User View
                     Rectangle {
                         Layout.fillWidth: true
                         height: 100
@@ -147,7 +154,6 @@ Page {
                     }
                 }
 
-                // 2. PREMISES LIST TITLE
                 Text {
                     text: "Ваши заведения"
                     font.bold: true
@@ -157,14 +163,14 @@ Page {
                     Layout.topMargin: 10
                 }
 
-                // 3. LIST
+                // 3. LIST (ИСПРАВЛЕННЫЙ)
                 ListView {
                     id: listView
                     Layout.fillWidth: true
                     height: contentHeight
-                    implicitHeight: count * 100 // Approximation
+                    implicitHeight: count * 110
                     model: premisesModel
-                    interactive: false // Scroll handled by parent Flickable
+                    interactive: false
 
                     delegate: Item {
                         width: parent.width
@@ -188,7 +194,7 @@ Page {
                                 anchors.margins: 16
                                 spacing: 16
 
-                                // Icon Box
+                                // Иконка
                                 Rectangle {
                                     Layout.preferredWidth: 50; Layout.preferredHeight: 50
                                     radius: 12
@@ -202,46 +208,68 @@ Page {
                                     }
                                 }
 
-                                // Info
-                                ColumnLayout {
+                                // Текст (Кликабельный для редактирования)
+                                // ИСПРАВЛЕНИЕ ОШИБКИ ANCHORS:
+                                // Мы оборачиваем ColumnLayout и MouseArea в Item.
+                                Item {
                                     Layout.fillWidth: true
-                                    spacing: 4
-                                    Text {
-                                        text: modelData.name
-                                        font.bold: true
-                                        font.pixelSize: 16
-                                        color: Theme.textPrimary
+                                    Layout.fillHeight: true
+
+                                    ColumnLayout {
+                                        anchors.fill: parent
+                                        spacing: 4
+                                        Text {
+                                            text: modelData.name
+                                            font.bold: true
+                                            font.pixelSize: 16
+                                            color: Theme.textPrimary
+                                        }
+                                        Text {
+                                            text: "Нажмите для настройки схемы"
+                                            font.pixelSize: 12
+                                            color: Theme.textSecondary
+                                        }
                                     }
-                                    Text {
-                                        text: "Нажмите для настройки схемы зала"
-                                        font.pixelSize: 12
-                                        color: Theme.textSecondary
+
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        onClicked: {
+                                            adminDashboard.StackView.view.push("HallEditorPage.qml", {
+                                                "premisesId": modelData.id,
+                                                "premisesName": modelData.name
+                                            })
+                                        }
                                     }
                                 }
 
-                                // Arrow
-                                Rectangle {
-                                    width: 32; height: 32; radius: 16
-                                    color: Theme.background
-                                    Text { text: "✏️"; anchors.centerIn: parent; font.pixelSize: 14 }
-                                }
-                            }
-
-                            MouseArea {
-                                anchors.fill: parent
-                                onClicked: {
-                                    console.log("Редактируем ID:", modelData.id)
-                                    adminDashboard.StackView.view.push("HallEditorPage.qml", {
-                                        "premisesId": modelData.id,
-                                        "premisesName": modelData.name
-                                    })
+                                // КНОПКА УДАЛЕНИЯ
+                                Button {
+                                    Layout.preferredWidth: 40
+                                    Layout.preferredHeight: 40
+                                    background: Rectangle {
+                                        color: parent.pressed ? "#FFEBEE" : "#FAFAFA"
+                                        radius: 20
+                                        border.color: parent.pressed ? Theme.error : "transparent"
+                                    }
+                                    contentItem: Text {
+                                        text: Theme.iconDelete
+                                        color: Theme.error
+                                        font.pixelSize: 20
+                                        anchors.centerIn: parent
+                                        horizontalAlignment: Text.AlignHCenter
+                                        verticalAlignment: Text.AlignVCenter
+                                    }
+                                    onClicked: {
+                                        premiseIdToDelete = modelData.id
+                                        confirmDeleteDialog.open()
+                                    }
                                 }
                             }
                         }
                     }
                 }
 
-                // Empty State
+                // Пустое состояние
                 Column {
                     visible: premisesModel.length === 0
                     Layout.alignment: Qt.AlignHCenter
@@ -260,7 +288,7 @@ Page {
         }
     }
 
-    // --- DIALOG (CREATE) ---
+    // --- ДИАЛОГ СОЗДАНИЯ ---
     Dialog {
         id: createDialog
         anchors.centerIn: parent
@@ -268,80 +296,92 @@ Page {
         modal: true
         closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
         focus: true
-
-        background: Rectangle {
-            color: Theme.surface
-            radius: Theme.radiusLarge
-            Rectangle { z: -1; anchors.fill: parent; anchors.margins: -4; color: "#20000000"; radius: 20 }
-        }
+        background: Rectangle { color: Theme.surface; radius: Theme.radiusLarge }
 
         contentItem: ColumnLayout {
             spacing: 20
-
             Column {
-                Layout.fillWidth: true
-                spacing: 8
+                Layout.fillWidth: true; spacing: 8
                 Text { text: "✨ Новое заведение"; font.bold: true; font.pixelSize: 20; color: Theme.textPrimary }
                 Text { text: "Введите название ресторана или кафе"; color: Theme.textSecondary; font.pixelSize: 14; wrapMode: Text.WordWrap; width: parent.width }
             }
-
             TextField {
                 id: newPremiseName
-                Layout.fillWidth: true
-                placeholderText: "Например: Lounge Bar"
-                font.pixelSize: 16
-                color: Theme.textPrimary
-                background: Rectangle {
-                    color: Theme.surfaceDark; radius: 8
-                    border.color: parent.activeFocus ? Theme.primary : "transparent"; border.width: 2
-                }
-                Component.onCompleted: createDialog.opened.connect(() => { forceActiveFocus() })
+                Layout.fillWidth: true; placeholderText: "Например: Lounge Bar"
+                font.pixelSize: 16; color: Theme.textPrimary
+                background: Rectangle { color: Theme.surfaceDark; radius: 8; border.color: parent.activeFocus ? Theme.primary : "transparent"; border.width: 2 }
+                Connections { target: createDialog; function onOpened() { newPremiseName.forceActiveFocus() } }
             }
-
             RowLayout {
-                Layout.fillWidth: true
-                spacing: 12
-
+                Layout.fillWidth: true; spacing: 12
                 Button {
-                    text: "Отмена"
-                    Layout.fillWidth: true
-                    flat: true
+                    text: "Отмена"; Layout.fillWidth: true; flat: true
                     contentItem: Text { text: parent.text; color: Theme.textSecondary; font.bold: true; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
                     background: Rectangle { color: "transparent" }
                     onClicked: createDialog.close()
                 }
-
                 Button {
-                    text: "Создать"
-                    Layout.fillWidth: true
-                    enabled: newPremiseName.text.length > 0
+                    text: "Создать"; Layout.fillWidth: true; enabled: newPremiseName.text.length > 0
                     background: Rectangle { color: parent.enabled ? Theme.primary : Theme.divider; radius: 8 }
                     contentItem: Text { text: parent.text; color: "white"; font.bold: true; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
                     onClicked: {
                         if (newPremiseName.text === "") return
                         var data = { "name": newPremiseName.text, "bgImagePath": "" }
                         var success = BackendApi.createPremises(data)
-                        if (success) {
-                            newPremiseName.text = ""
-                            refreshData()
-                            createDialog.close()
-                        }
+                        if (success) { newPremiseName.text = ""; refreshData(); createDialog.close() }
                     }
                 }
             }
         }
     }
 
-    // FAB (Floating Action Button) at the bottom right
-    Rectangle {
-        width: 56; height: 56; radius: 28
-        color: Theme.accent
-        anchors.right: parent.right; anchors.bottom: parent.bottom
-        anchors.margins: 24
+    // --- ДИАЛОГ УДАЛЕНИЯ ---
+    Dialog {
+        id: confirmDeleteDialog
+        anchors.centerIn: parent
+        width: Math.min(parent.width * 0.85, 320)
+        modal: true
+        closePolicy: Popup.NoAutoClose
 
+        background: Rectangle {
+            color: Theme.surface
+            radius: Theme.radiusLarge
+            border.color: Theme.divider
+            border.width: 1
+            Rectangle { z: -1; anchors.fill: parent; anchors.margins: -4; color: "#20000000"; radius: parent.radius + 4 }
+        }
+
+        contentItem: ColumnLayout {
+            spacing: 20
+            Column {
+                Layout.fillWidth: true; spacing: 8
+                Text { text: "Удалить заведение?"; font.bold: true; font.pixelSize: 20; color: Theme.textPrimary; Layout.alignment: Qt.AlignHCenter }
+                Text { text: "Это действие необратимо. Все столы и бронирования будут удалены."; color: Theme.textSecondary; font.pixelSize: 14; wrapMode: Text.WordWrap; width: parent.width; horizontalAlignment: Text.AlignHCenter; Layout.fillWidth: true }
+            }
+            RowLayout {
+                Layout.fillWidth: true; spacing: 12
+                Button {
+                    text: "Отмена"; Layout.fillWidth: true; flat: true
+                    background: Rectangle { color: "transparent" }
+                    contentItem: Text { text: parent.text; color: Theme.textPrimary; font.bold: true; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+                    onClicked: { premiseIdToDelete = -1; confirmDeleteDialog.close() }
+                }
+                Button {
+                    text: "Удалить"; Layout.fillWidth: true
+                    background: Rectangle { color: "#FFEBEE"; radius: 8; border.color: Theme.error; border.width: 1 }
+                    contentItem: Text { text: parent.text; color: Theme.error; font.bold: true; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+                    onClicked: { deletePremise(); confirmDeleteDialog.close() }
+                }
+            }
+        }
+    }
+
+    // FAB
+    Rectangle {
+        width: 56; height: 56; radius: 28; color: Theme.accent
+        anchors.right: parent.right; anchors.bottom: parent.bottom; anchors.margins: 24
         layer.enabled: true
         layer.effect: MultiEffect { shadowEnabled: true; shadowColor: "#40000000"; shadowBlur: 10; shadowVerticalOffset: 4 }
-
         Text { text: "+"; font.pixelSize: 32; color: "white"; anchors.centerIn: parent; font.bold: true }
         MouseArea { anchors.fill: parent; onClicked: createDialog.open() }
     }

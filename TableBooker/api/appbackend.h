@@ -45,6 +45,7 @@ public:
 
     Q_INVOKABLE QVariantList getAllUsers();
     Q_INVOKABLE bool changeUserRole(int userId, bool makeAdmin);
+    Q_INVOKABLE bool deletePremises(int id);
 
 signals:
     void loginStatusChanged(); // Сигнал, чтобы QML обновил интерфейс

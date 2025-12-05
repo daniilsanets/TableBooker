@@ -1,6 +1,7 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
+import QtQuick.Effects
 import com.tablebooker.api 1.0
 import "components"
 import "Theme.js" as Theme
@@ -13,24 +14,23 @@ Page {
         color: Theme.background
     }
 
-    // Flickable для прокрутки на небольших экранах
     Flickable {
         id: flickable
         anchors.fill: parent
-        // Высота контента: либо высота колонки с отступами, либо высота экрана (чтобы центрировать, если контент маленький)
         contentHeight: Math.max(layout.implicitHeight + 100, height)
         contentWidth: width
         clip: true
 
-        // Контейнер для выравнивания
         Item {
             width: parent.width
             height: flickable.contentHeight
 
             ColumnLayout {
                 id: layout
-                width: Math.min(parent.width * 0.85, 400) // Ограничиваем ширину формы
-                anchors.centerIn: parent // Центрируем форму внутри Flickable
+                width: Math.min(parent.width * 0.85, 400)
+                anchors.centerIn: parent
+                // Сдвигаем форму вверх от геометрического центра
+                anchors.verticalCenterOffset: -60
                 spacing: Theme.spacingLarge
 
                 // --- ЛОГОТИП И ЗАГОЛОВОК ---
@@ -39,53 +39,44 @@ Page {
                     Layout.alignment: Qt.AlignHCenter
                     spacing: Theme.spacingSmall
 
-                    // Логотип
+                    // Логотип с тенью
                     Rectangle {
                         Layout.alignment: Qt.AlignHCenter
-                        width: 100
-                        height: 100
+                        width: 100; height: 100
                         radius: 50
                         color: Theme.surface
                         border.color: Theme.primary
                         border.width: 2
+
+                        layer.enabled: true
+                        layer.effect: MultiEffect {
+                            shadowEnabled: true
+                            shadowColor: "#20000000"
+                            shadowBlur: 16
+                            shadowVerticalOffset: 4
+                        }
 
                         Text {
                             text: Theme.iconRestaurant
                             font.pixelSize: 48
                             anchors.centerIn: parent
                         }
-
-                        // Тень логотипа
-                        Rectangle {
-                            anchors.fill: parent
-                            anchors.margins: -4
-                            z: -1
-                            radius: 54
-                            color: Theme.primary
-                            opacity: 0.1
-                        }
                     }
 
-                    // Название
                     Text {
                         text: "TableBooker"
                         font.bold: true
                         font.pixelSize: Theme.fontSizeXXLarge
                         color: Theme.primary
-
                         Layout.alignment: Qt.AlignHCenter
-                        horizontalAlignment: Text.AlignHCenter
                         Layout.topMargin: Theme.spacingMedium
                     }
 
-                    // Подзаголовок
                     Text {
                         text: "Бронируйте лучшие места"
                         font.pixelSize: Theme.fontSizeMedium
                         color: Theme.textSecondary
-
                         Layout.alignment: Qt.AlignHCenter
-                        horizontalAlignment: Text.AlignHCenter
                     }
                 }
 
@@ -111,13 +102,11 @@ Page {
                         rightPadding: 48
 
                         Item {
-                            width: 40
-                            height: 40
+                            width: 40; height: 40
                             anchors.right: parent.right
                             anchors.rightMargin: 4
                             anchors.verticalCenter: parent.verticalCenter
                             z: 10
-
                             Text {
                                 text: showPassArea.checked ? Theme.iconVisibilityOff : Theme.iconVisibility
                                 font.pixelSize: 22
@@ -125,7 +114,6 @@ Page {
                                 anchors.centerIn: parent
                                 opacity: 0.7
                             }
-
                             MouseArea {
                                 id: showPassArea
                                 anchors.fill: parent
@@ -142,7 +130,6 @@ Page {
                         color: Theme.textSecondary
                         font.pixelSize: Theme.fontSizeSmall
                         Layout.alignment: Qt.AlignRight
-
                         MouseArea {
                             anchors.fill: parent
                             cursorShape: Qt.PointingHandCursor
@@ -155,26 +142,44 @@ Page {
                 ColumnLayout {
                     Layout.fillWidth: true
                     Layout.topMargin: Theme.spacingMedium
-                    spacing: Theme.spacingMedium
+                    spacing: 16
 
-                    // Кнопка "Войти" (Явно задаем стиль и центрирование)
+                    // Кнопка "Войти" (Градиент + Тень)
                     Button {
                         id: loginButton
                         text: "Войти"
                         Layout.fillWidth: true
-                        height: 50 // Чуть выше стандартного для удобства
+                        height: 56 // Кнопка выше и удобнее
 
                         background: Rectangle {
-                            color: Theme.primary
-                            radius: Theme.radiusMedium
-                            opacity: parent.pressed ? 0.8 : 1.0
+                            radius: 28 // Полное скругление (Pill shape)
+                            gradient: Gradient {
+                                GradientStop { position: 0.0; color: Theme.primary }
+                                GradientStop { position: 1.0; color: Theme.primaryDark }
+                            }
+
+                            // Тень кнопки
+                            layer.enabled: true
+                            layer.effect: MultiEffect {
+                                shadowEnabled: true
+                                shadowColor: "#40000000" // Полупрозрачная тень
+                                shadowBlur: 10
+                                shadowVerticalOffset: 4
+                            }
+
+                            // Эффект нажатия (затемнение)
+                            Rectangle {
+                                anchors.fill: parent
+                                radius: 28
+                                color: "black"
+                                opacity: parent.parent.pressed ? 0.1 : 0
+                            }
                         }
 
-                        // Явное центрирование текста
                         contentItem: Text {
                             text: parent.text
                             color: "white"
-                            font.pixelSize: Theme.fontSizeMedium
+                            font.pixelSize: Theme.fontSizeLarge
                             font.bold: true
                             horizontalAlignment: Text.AlignHCenter
                             verticalAlignment: Text.AlignVCenter
@@ -183,21 +188,19 @@ Page {
                         onClicked: loginButtonAction()
                     }
 
-                    // Кнопка "Создать аккаунт" (Стиль Flat)
+                    // Кнопка "Создать аккаунт" (Outline Style)
                     Button {
                         text: "Создать аккаунт"
                         Layout.fillWidth: true
-                        height: 50
+                        height: 56
 
                         background: Rectangle {
-                            color: "transparent"
-                            radius: Theme.radiusMedium
-                            border.color: Theme.primary // Добавил рамку для четкости
-                            border.width: 1
-                            opacity: parent.pressed ? 0.6 : 1.0
+                            color: parent.pressed ? "#F5F5F5" : "transparent"
+                            radius: 28
+                            border.color: Theme.primary
+                            border.width: 2
                         }
 
-                        // Явное центрирование текста
                         contentItem: Text {
                             text: parent.text
                             color: Theme.primary
@@ -244,16 +247,24 @@ Page {
 
         background: Rectangle {
             color: Theme.surface
-            radius: Theme.radiusMedium
+            radius: Theme.radiusLarge
         }
 
-        Label {
-            id: errorLabel
-            text: ""
-            color: Theme.textPrimary
-            wrapMode: Text.Wrap
-            width: parent.width
-            horizontalAlignment: Text.AlignHCenter
+        contentItem: ColumnLayout {
+            spacing: 16
+            Text {
+                text: "⚠️"
+                font.pixelSize: 32
+                Layout.alignment: Qt.AlignHCenter
+            }
+            Label {
+                id: errorLabel
+                text: ""
+                color: Theme.textPrimary
+                wrapMode: Text.Wrap
+                horizontalAlignment: Text.AlignHCenter
+                Layout.fillWidth: true
+            }
         }
     }
 }

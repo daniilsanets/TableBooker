@@ -40,6 +40,8 @@ public:
     QList<UserData> getAllUsers();
     bool updateUserRole(int userId, const QString& newRole);
 
+    bool deletePremises(int id);
+
 private:
     explicit DatabaseManager(QObject *parent = nullptr);
     ~DatabaseManager();
