@@ -21,7 +21,6 @@ int main(int argc, char *argv[])
     QQmlApplicationEngine engine;
     const QUrl url(QStringLiteral("qrc:/TableBooker/main.qml")); // Проверь, чтобы путь совпадал с твоим проектом
 
-    // ... дальше стандартный код ...
     QObject::connect(
         &engine,
         &QQmlApplicationEngine::objectCreated,

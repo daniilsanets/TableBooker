@@ -8,499 +8,295 @@ import "Theme.js" as Theme
 Page {
     id: registrationPage
     title: "Регистрация"
-    
+
     background: Rectangle {
         color: Theme.background
     }
 
-    // Красивый диалог ошибки
-        Dialog {
-            id: errorDialog
-            anchors.centerIn: parent
-            width: Math.min(parent.width * 0.85, 320)
-            modal: true
-            closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+    // Скролл для адаптивности (как на экране входа)
+    Flickable {
+        id: flickable
+        anchors.fill: parent
+        contentHeight: Math.max(contentColumn.implicitHeight + 100, height)
+        contentWidth: width
+        clip: true
 
-            property alias text: errorText.text
+        // Контейнер для выравнивания по центру
+        Item {
+            width: parent.width
+            height: flickable.contentHeight
 
-            // Фон диалога
-            background: Rectangle {
-                color: Theme.surface
-                radius: Theme.radiusLarge
-                border.color: "transparent" // Убираем системные рамки
+            ColumnLayout {
+                id: contentColumn
+                width: Math.min(parent.width * 0.85, 400) // Ограничение ширины
+                anchors.centerIn: parent
+                spacing: Theme.spacingMedium
 
-                // Тень
-                layer.enabled: true
-                layer.effect: DropShadow {
-                    color: "#40000000"
-                    radius: 16
-                    verticalOffset: 4
-                    samples: 16
-                }
-            }
-
-            contentItem: ColumnLayout {
-                spacing: 16
-
-                // Иконка ошибки
-                Rectangle {
+                // --- ЗАГОЛОВОК ---
+                ColumnLayout {
+                    Layout.fillWidth: true
                     Layout.alignment: Qt.AlignHCenter
-                    width: 60; height: 60
-                    radius: 30
-                    color: "#FFEBEE" // Светло-красный фон
+                    Layout.bottomMargin: 10
+                    spacing: Theme.spacingSmall
 
                     Text {
-                        text: "⚠️"
-                        font.pixelSize: 30
-                        anchors.centerIn: parent
-                    }
-                }
-
-                // Заголовок
-                Text {
-                    text: "Ошибка"
-                    font.bold: true
-                    font.pixelSize: Theme.fontSizeLarge
-                    color: Theme.textPrimary
-                    Layout.alignment: Qt.AlignHCenter
-                }
-
-                // Текст ошибки
-                Text {
-                    id: errorText
-                    text: ""
-                    font.pixelSize: Theme.fontSizeMedium
-                    color: Theme.textSecondary
-                    wrapMode: Text.WordWrap
-                    horizontalAlignment: Text.AlignHCenter
-                    Layout.fillWidth: true
-                }
-
-                // Кнопка ОК
-                Button {
-                    text: "Понятно"
-                    Layout.fillWidth: true
-                    Layout.topMargin: 8
-
-                    background: Rectangle {
-                        color: Theme.primary
-                        radius: Theme.radiusMedium
-                    }
-                    contentItem: Text {
-                        text: parent.text
-                        color: "white"
+                        text: "Создание аккаунта"
                         font.bold: true
-                        horizontalAlignment: Text.AlignHCenter
-                        verticalAlignment: Text.AlignVCenter
+                        font.pixelSize: Theme.fontSizeXLarge
+                        color: Theme.primary
+                        Layout.alignment: Qt.AlignHCenter
                     }
-                    onClicked: errorDialog.close()
-                }
-            }
 
-            // Анимация появления
-            enter: Transition {
-                NumberAnimation { property: "scale"; from: 0.9; to: 1.0; duration: 150; easing.type: Easing.OutBack }
-                NumberAnimation { property: "opacity"; from: 0.0; to: 1.0; duration: 100 }
-            }
-            exit: Transition {
-                NumberAnimation { property: "scale"; from: 1.0; to: 0.9; duration: 100 }
-                NumberAnimation { property: "opacity"; from: 1.0; to: 0.0; duration: 100 }
-            }
-        }
-
-    Flickable {
-        anchors.fill: parent
-        contentHeight: contentColumn.height + 40
-        clip: true
-        
-        ColumnLayout {
-            id: contentColumn
-            width: parent.width * 0.9
-            spacing: Theme.spacingMedium
-            anchors.horizontalCenter: parent.horizontalCenter
-            anchors.top: parent.top
-            anchors.topMargin: 20
-
-            // Заголовок
-            Column {
-                Layout.alignment: Qt.AlignHCenter
-                Layout.bottomMargin: Theme.spacingLarge
-                spacing: Theme.spacingSmall
-                
-                Text {
-                    text: "Создание аккаунта"
-                    font.bold: true
-                    font.pixelSize: Theme.fontSizeXLarge
-                    color: Theme.textPrimary
-                    anchors.horizontalCenter: parent.horizontalCenter
-                }
-                
-                Text {
-                    text: "Заполните все поля для регистрации"
-                    font.pixelSize: Theme.fontSizeSmall
-                    color: Theme.textSecondary
-                    anchors.horizontalCenter: parent.horizontalCenter
-                }
-            }
-
-            // Поле имени
-            Rectangle {
-                Layout.fillWidth: true
-                height: 56
-                color: Theme.surface
-                radius: Theme.radiusMedium
-                border.color: usernameField.activeFocus ? Theme.primary : Theme.divider
-                border.width: usernameField.activeFocus ? 2 : 1
-                
-                Item {
-                    anchors.left: parent.left
-                    anchors.leftMargin: 16
-                    anchors.right: parent.right
-                    anchors.rightMargin: 16
-                    anchors.verticalCenter: parent.verticalCenter
-                    height: 40
-                    
-                    Row {
-                        anchors.fill: parent
-                        spacing: 12
-                        
-                        Text {
-                            text: Theme.iconPerson
-                            font.pixelSize: 24
-                            color: Theme.textSecondary
-                            anchors.verticalCenter: parent.verticalCenter
-                        }
-                        
-                        TextField {
-                            id: usernameField
-                            anchors.verticalCenter: parent.verticalCenter
-                            width: parent.parent.width - 60
-                            placeholderText: "Полное имя"
-                            background: Item {}
-                            font.pixelSize: Theme.fontSizeMedium
-                            color: Theme.textPrimary
-                        }
-                    }
-                }
-            }
-
-            // Поле Email
-            Rectangle {
-                Layout.fillWidth: true
-                height: 56
-                color: Theme.surface
-                radius: Theme.radiusMedium
-                border.color: emailField.activeFocus ? Theme.primary : (emailField.acceptableInput || emailField.text === "" ? Theme.divider : Theme.error)
-                border.width: emailField.activeFocus ? 2 : 1
-                
-                Item {
-                    anchors.left: parent.left
-                    anchors.leftMargin: 16
-                    anchors.right: parent.right
-                    anchors.rightMargin: 16
-                    anchors.verticalCenter: parent.verticalCenter
-                    height: 40
-                    
-                    Row {
-                        anchors.fill: parent
-                        spacing: 12
-                        
-                        Text {
-                            text: Theme.iconEmail
-                            font.pixelSize: 24
-                            color: Theme.textSecondary
-                            anchors.verticalCenter: parent.verticalCenter
-                        }
-                        
-                        TextField {
-                            id: emailField
-                            anchors.verticalCenter: parent.verticalCenter
-                            width: parent.parent.width - 60
-                            placeholderText: "Email"
-                            inputMethodHints: Qt.ImhEmailCharactersOnly
-                            validator: RegularExpressionValidator {
-                                regularExpression: /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/
-                            }
-                            background: Item {}
-                            font.pixelSize: Theme.fontSizeMedium
-                            color: acceptableInput || text === "" ? Theme.textPrimary : Theme.error
-                        }
-                    }
-                }
-            }
-
-            // Поле телефона
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: Theme.spacingSmall
-
-                Rectangle {
-                    Layout.preferredWidth: 120
-                    height: 56
-                    color: Theme.surface
-                    radius: Theme.radiusMedium
-                    border.color: Theme.divider
-                    border.width: 1
-                    
-                    ComboBox {
-                        id: countrySelector
-                        anchors.fill: parent
-                        anchors.margins: 4
-                        
-                        background: Item {}
-                        
-                        model: ListModel {
-                            ListElement { code: "+375"; flag: "🇧🇾"; text: "🇧🇾 +375" }
-                        }
-
-                        textRole: "text"
-                        currentIndex: 0
-                        
-                        contentItem: Text {
-                            text: countrySelector.displayText
-                            font.pixelSize: Theme.fontSizeMedium
-                            color: Theme.textPrimary
-                            verticalAlignment: Text.AlignVCenter
-                            leftPadding: 8
-                        }
+                    Text {
+                        text: "Заполните данные для регистрации"
+                        font.pixelSize: Theme.fontSizeSmall
+                        color: Theme.textSecondary
+                        Layout.alignment: Qt.AlignHCenter
                     }
                 }
 
-                Rectangle {
+                // --- ПОЛЯ ВВОДА ---
+
+                // 1. Имя (ФИО)
+                MaterialTextField {
+                    id: usernameField
                     Layout.fillWidth: true
-                    height: 56
-                    color: Theme.surface
-                    radius: Theme.radiusMedium
-                    border.color: phoneLocalField.activeFocus ? Theme.primary : (phoneLocalField.acceptableInput || phoneLocalField.text === "" ? Theme.divider : Theme.error)
-                    border.width: phoneLocalField.activeFocus ? 2 : 1
-                    
-                    Item {
-                        anchors.left: parent.left
-                        anchors.leftMargin: 16
-                        anchors.right: parent.right
-                        anchors.rightMargin: 16
-                        anchors.verticalCenter: parent.verticalCenter
-                        height: 40
-                        
-                        Row {
-                            anchors.fill: parent
-                            spacing: 12
-                            
-                            Text {
-                                text: Theme.iconPhone
-                                font.pixelSize: 24
-                                color: Theme.textSecondary
-                                anchors.verticalCenter: parent.verticalCenter
-                            }
-                            
-                            TextField {
-                                id: phoneLocalField
-                                anchors.verticalCenter: parent.verticalCenter
-                                width: parent.parent.width - 60
-                                placeholderText: "29 111 22 33"
-                                inputMethodHints: Qt.ImhDigitsOnly
-                                validator: RegularExpressionValidator {
-                                    regularExpression: /^(25|29|33|44)[0-9]{7}$/
-                                }
-                                background: Item {}
-                                font.pixelSize: Theme.fontSizeMedium
-                                color: acceptableInput || text === "" ? Theme.textPrimary : Theme.error
-                                onTextChanged: {
-                                    if (text.length >= 2) {
-                                        var code = text.substring(0, 2)
-                                        if (code !== "25" && code !== "29" && code !== "33" && code !== "44") {
-                                            // Показываем ошибку только если поле не пустое
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
+                    placeholderText: "Полное имя"
+                    iconText: Theme.iconPerson
+                    onAccepted: emailField.forceActiveFocus()
                 }
-            }
 
-            // Поле никнейма
-            Rectangle {
-                Layout.fillWidth: true
-                height: 56
-                color: Theme.surface
-                radius: Theme.radiusMedium
-                border.color: nicknameField.activeFocus ? Theme.primary : Theme.divider
-                border.width: nicknameField.activeFocus ? 2 : 1
-                
-                Item {
-                    anchors.left: parent.left
-                    anchors.leftMargin: 16
-                    anchors.right: parent.right
-                    anchors.rightMargin: 16
-                    anchors.verticalCenter: parent.verticalCenter
-                    height: 40
-                    
-                    Row {
-                        anchors.fill: parent
-                        spacing: 12
-                        
+                // 2. Email
+                MaterialTextField {
+                    id: emailField
+                    Layout.fillWidth: true
+                    placeholderText: "Email"
+                    iconText: Theme.iconEmail
+                    inputMethodHints: Qt.ImhEmailCharactersOnly
+
+                    // Валидация Email
+                    property bool isValid: text.match(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/)
+                    hasError: text !== "" && !isValid
+
+                    onAccepted: phoneLocalField.forceActiveFocus()
+                }
+
+                // 3. Телефон (С выбором кода)
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: Theme.spacingSmall
+
+                    // Код страны (имитация комбобокса в стиле Material)
+                    Rectangle {
+                        Layout.preferredWidth: 90
+                        Layout.preferredHeight: 56 // Высота как у MaterialTextField
+                        color: Theme.surface
+                        radius: Theme.radiusSmall
+                        border.color: Theme.divider
+                        border.width: 1
+
                         Text {
-                            text: Theme.iconPerson
-                            font.pixelSize: 24
-                            color: Theme.textSecondary
-                            anchors.verticalCenter: parent.verticalCenter
-                        }
-                        
-                        TextField {
-                            id: nicknameField
-                            anchors.verticalCenter: parent.verticalCenter
-                            width: parent.parent.width - 60
-                            placeholderText: "Никнейм"
-                            background: Item {}
-                            font.pixelSize: Theme.fontSizeMedium
+                            text: "🇧🇾 +375"
+                            anchors.centerIn: parent
                             color: Theme.textPrimary
+                            font.pixelSize: Theme.fontSizeMedium
                         }
                     }
-                }
-            }
 
-            // Поле пароля
-            Rectangle {
-                Layout.fillWidth: true
-                height: 56
-                color: Theme.surface
-                radius: Theme.radiusMedium
-                border.color: passwordField.activeFocus ? Theme.primary : (passwordField.text.length >= 6 || passwordField.text === "" ? Theme.divider : Theme.error)
-                border.width: passwordField.activeFocus ? 2 : 1
-                
-                Item {
-                    anchors.left: parent.left
-                    anchors.leftMargin: 16
-                    anchors.right: parent.right
-                    anchors.rightMargin: 16
-                    anchors.verticalCenter: parent.verticalCenter
-                    height: 40
-                    
-                    Row {
-                        anchors.fill: parent
-                        spacing: 12
-                        
-                        TextField {
-                            id: passwordField
-                            anchors.verticalCenter: parent.verticalCenter
-                            width: parent.parent.width - 60
-                            placeholderText: "Пароль (мин. 6 символов)"
-                            echoMode: regShowPass.checked ? TextInput.Normal : TextInput.Password
-                            background: Item {}
-                            font.pixelSize: Theme.fontSizeMedium
-                            color: text.length >= 6 || text === "" ? Theme.textPrimary : Theme.error
+                    // Номер
+                    MaterialTextField {
+                        id: phoneLocalField
+                        Layout.fillWidth: true
+                        placeholderText: "29 111 22 33"
+                        inputMethodHints: Qt.ImhDigitsOnly
+                        validator: RegularExpressionValidator { regularExpression: /^[0-9]{9}$/ }
+                        iconText: Theme.iconPhone
+                        onAccepted: nicknameField.forceActiveFocus()
+                    }
+                }
+
+                // 4. Никнейм
+                MaterialTextField {
+                    id: nicknameField
+                    Layout.fillWidth: true
+                    placeholderText: "Никнейм"
+                    iconText: Theme.iconPerson // Или другая иконка
+                    onAccepted: passwordField.forceActiveFocus()
+                }
+
+                // 5. Пароль
+                MaterialTextField {
+                    id: passwordField
+                    Layout.fillWidth: true
+                    placeholderText: "Пароль (мин. 6 символов)"
+                    iconText: Theme.iconLock
+                    echoMode: regShowPass.checked ? TextInput.Normal : TextInput.Password
+                    rightPadding: 48
+
+                    hasError: text !== "" && text.length < 6
+
+                    Item {
+                        width: 40; height: 40
+                        anchors.right: parent.right
+                        anchors.rightMargin: 4
+                        anchors.verticalCenter: parent.verticalCenter
+                        z: 10
+                        Text {
+                            text: regShowPass.checked ? Theme.iconVisibilityOff : Theme.iconVisibility
+                            font.pixelSize: 22
+                            color: Theme.textSecondary
+                            anchors.centerIn: parent
+                            opacity: 0.7
                         }
-                        
                         MouseArea {
                             id: regShowPass
-                            width: 40
-                            height: 40
-                            anchors.right: parent.right
-                            anchors.rightMargin: 0
-                            anchors.verticalCenter: parent.verticalCenter
-                            
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
                             property bool checked: false
-                            
-                            Text {
-                                text: parent.checked ? Theme.iconVisibilityOff : Theme.iconVisibility
-                                font.pixelSize: 24
-                                color: Theme.textSecondary
-                                anchors.centerIn: parent
-                            }
-                            
                             onClicked: checked = !checked
                         }
                     }
+                    onAccepted: registerAction()
+                }
+
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    Layout.topMargin: Theme.spacingMedium
+                    spacing: Theme.spacingMedium
+
+                    // Кнопка "Зарегистрироваться" (Filled)
+                    Button {
+                        id: registerButton
+                        text: "Зарегистрироваться"
+                        Layout.fillWidth: true
+                        height: 50
+
+                        background: Rectangle {
+                            color: Theme.primary
+                            radius: Theme.radiusMedium
+                            opacity: parent.pressed ? 0.8 : 1.0
+                        }
+
+                        contentItem: Text {
+                            text: parent.text
+                            color: "white" // Белый текст для основной кнопки
+                            font.pixelSize: Theme.fontSizeMedium
+                            font.bold: true
+                            horizontalAlignment: Text.AlignHCenter // Центрирование по горизонтали
+                            verticalAlignment: Text.AlignVCenter   // Центрирование по вертикали
+                        }
+
+                        onClicked: registerAction()
+                    }
+
+                    // Кнопка "Назад ко входу" (Flat/Text Button)
+                    Button {
+                        text: "Назад ко входу"
+                        Layout.fillWidth: true
+                        height: 50
+
+                        background: Rectangle {
+                            color: "transparent"
+                            radius: Theme.radiusMedium
+                            border.width: 0
+                            opacity: parent.pressed ? 0.6 : 1.0
+                        }
+
+                        contentItem: Text {
+                            text: parent.text
+                            color: Theme.primary // Цвет текста такой же, как тема
+                            font.pixelSize: Theme.fontSizeMedium
+                            font.bold: true
+                            horizontalAlignment: Text.AlignHCenter // Центрирование по горизонтали
+                            verticalAlignment: Text.AlignVCenter   // Центрирование по вертикали
+                        }
+
+                        onClicked: registrationPage.StackView.view.pop()
+                    }
                 }
             }
+        }
+    }
 
-            // Кнопка регистрации
-            Button {
-                id: registerButton
-                text: "Зарегистрироваться"
+    // --- ДИАЛОГ ОШИБКИ ---
+    Dialog {
+        id: errorDialog
+        title: "Ошибка регистрации"
+        x: (parent.width - width) / 2
+        y: (parent.height - height) / 2
+        width: Math.min(parent.width * 0.8, 300)
+        modal: true
+        standardButtons: Dialog.Ok
+        property alias text: errorLabel.text
+
+        background: Rectangle {
+            color: Theme.surface
+            radius: Theme.radiusLarge
+        }
+
+        contentItem: ColumnLayout {
+            spacing: Theme.spacingMedium
+            Text {
+                text: "⚠️"
+                font.pixelSize: 32
+                Layout.alignment: Qt.AlignHCenter
+            }
+            Label {
+                id: errorLabel
+                text: ""
+                color: Theme.textPrimary
+                wrapMode: Text.Wrap
+                horizontalAlignment: Text.AlignHCenter
                 Layout.fillWidth: true
-                Layout.topMargin: Theme.spacingMedium
-                height: 56
-
-                background: Rectangle {
-                    color: Theme.primary
-                    radius: Theme.radiusMedium
-                    opacity: registerButton.pressed ? 0.8 : 1.0
-                    
-                    Behavior on opacity {
-                        NumberAnimation { duration: 150 }
-                    }
-                }
-                
-                contentItem: Text {
-                    text: registerButton.text
-                    color: "white"
-                    font.pixelSize: Theme.fontSizeLarge
-                    font.bold: true
-                    horizontalAlignment: Text.AlignHCenter
-                    verticalAlignment: Text.AlignVCenter
-                }
-
-                onClicked: {
-                    if (usernameField.text === "" || nicknameField.text === "") {
-                        showError("Заполните имя и никнейм")
-                        return
-                    }
-
-                    if (!emailField.acceptableInput) {
-                        showError("Некорректный Email")
-                        return
-                    }
-
-                    if (!phoneLocalField.acceptableInput) {
-                        showError("Номер телефона должен содержать 9 цифр (без кода)")
-                        return
-                    }
-
-                    if (passwordField.text.length < 6) {
-                        showError("Пароль слишком короткий")
-                        return
-                    }
-
-                    var code = countrySelector.model.get(countrySelector.currentIndex).code
-                    var fullPhone = code + phoneLocalField.text
-
-                    var userData = {
-                        "username": usernameField.text,
-                        "password": passwordField.text,
-                        "email": emailField.text,
-                        "phone": fullPhone,
-                        "nickname": nicknameField.text
-                    }
-
-                    var isSuccess = BackendApi.registerUser(userData)
-
-                    if (isSuccess) {
-                        console.log("Регистрация успешна!")
-                        registrationPage.StackView.view.pop()
-                    } else {
-                        showError("Ошибка: Пользователь с таким логином/телефоном уже есть")
-                    }
-                }
             }
+        }
+    }
 
-            // Кнопка назад
-            Button {
-                text: "Назад"
-                Layout.fillWidth: true
-                Layout.bottomMargin: 20
-                flat: true
-                
-                contentItem: Text {
-                    text: parent.text
-                    color: Theme.primary
-                    font.pixelSize: Theme.fontSizeMedium
-                    horizontalAlignment: Text.AlignHCenter
-                }
-                
-                onClicked: registrationPage.StackView.view.pop()
-            }
+    // --- ЛОГИКА РЕГИСТРАЦИИ ---
+    function registerAction() {
+        // 1. Проверки
+        if (usernameField.text === "" || nicknameField.text === "") {
+            showError("Заполните имя и никнейм")
+            return
+        }
+
+        // Проверка валидности Email через свойство, которое мы добавили выше
+        if (emailField.text === "" || !emailField.isValid) {
+            showError("Введите корректный Email")
+            return
+        }
+
+        // Проверка телефона (9 цифр)
+        if (phoneLocalField.text.length !== 9) {
+            showError("Номер телефона должен содержать 9 цифр (без кода +375)")
+            return
+        }
+
+        if (passwordField.text.length < 6) {
+            showError("Пароль слишком короткий (минимум 6 символов)")
+            return
+        }
+
+        // 2. Сбор данных
+        var fullPhone = "+375" + phoneLocalField.text
+
+        var userData = {
+            "username": usernameField.text,  // В этой версии используем Имя как username для простоты, или можно добавить отдельное поле
+            "password": passwordField.text,
+            "email": emailField.text,
+            "phone": fullPhone,
+            "nickname": nicknameField.text
+        }
+
+        // 3. Отправка на бэкенд
+        var isSuccess = BackendApi.registerUser(userData)
+
+        if (isSuccess) {
+            console.log("Регистрация успешна!")
+            // Можно показать диалог успеха или сразу вернуться
+            registrationPage.StackView.view.pop()
+        } else {
+            showError("Ошибка: Пользователь с таким логином, телефоном или почтой уже существует")
         }
     }
 

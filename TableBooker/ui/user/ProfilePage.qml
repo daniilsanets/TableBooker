@@ -1,6 +1,7 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
+import QtQuick.Effects
 import com.tablebooker.api 1.0
 import "../components"
 import "../Theme.js" as Theme
@@ -13,370 +14,337 @@ Page {
         color: Theme.background
     }
 
+    // Данные из API
     property string userRole: BackendApi.currentUserRole
-    property string userName: BackendApi.currentUserName !== "" ? BackendApi.currentUserName : "Пользователь"
-    property var userBookings: []
-
-    // Хелпер для названий месяцев
-    readonly property var monthNames: ["Янв", "Фев", "Мар", "Апр", "Май", "Июн", "Июл", "Авг", "Сен", "Окт", "Ноя", "Дек"]
+    property int userId: BackendApi.currentUserId
+    property var bookingsList: []
 
     function loadBookings() {
-        userBookings = BackendApi.getUserBookings()
+        bookingsList = BackendApi.getUserBookings()
     }
 
     function cancelBooking(id) {
         var success = BackendApi.cancelBooking(id)
-        if (success) {
-            loadBookings()
-        }
+        if (success) loadBookings()
     }
 
-    // Парсим дату "YYYY-MM-DD HH:MM:SS"
-    function getDay(dateStr) {
-        return dateStr.substring(8, 10)
-    }
+    // Убираем стандартный хедер
+    header: Item { height: 0 }
 
-    function getMonth(dateStr) {
-        var monthIndex = parseInt(dateStr.substring(5, 7)) - 1
-        if (monthIndex >= 0 && monthIndex < 12) return monthNames[monthIndex]
-        return ""
-    }
-
-    function getTime(dateStr) {
-        return dateStr.substring(11, 16)
-    }
-
-    Component.onCompleted: loadBookings()
-
-    header: ToolBar {
-        background: Rectangle { color: Theme.surface }
-        RowLayout {
-            anchors.fill: parent
-            anchors.leftMargin: 8
-            anchors.rightMargin: 16
-
-            ToolButton {
-                text: Theme.iconBack
-                contentItem: Text {
-                    text: parent.text
-                    font.pixelSize: 24
-                    color: Theme.textPrimary
-                    anchors.centerIn: parent
-                }
-                onClicked: profilePage.StackView.view.pop()
-            }
-
-            Label {
-                text: profilePage.title
-                font.bold: true
-                font.pixelSize: Theme.fontSizeLarge
-                color: Theme.textPrimary
-                Layout.fillWidth: true
-            }
-
-            ToolButton {
-                text: Theme.iconRotateRight
-                contentItem: Text {
-                    text: parent.text
-                    font.pixelSize: 20
-                    color: Theme.primary
-                    anchors.centerIn: parent
-                }
-                onClicked: loadBookings()
-            }
-        }
-    }
-
+    // --- ОСНОВНОЙ КОНТЕНТ ---
     Flickable {
-        anchors.fill: parent
+        id: flickableArea
+        anchors.top: parent.top
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: bottomPanel.top // Контент заканчивается над кнопкой выхода
         contentHeight: contentColumn.height + 40
         clip: true
+
+        // Хедер с градиентом
+        Rectangle {
+            width: parent.width
+            height: 220
+            gradient: Gradient {
+                GradientStop { position: 0.0; color: Theme.primaryDark }
+                GradientStop { position: 1.0; color: Theme.primary }
+            }
+            // Декор
+            Rectangle { width: 200; height: 200; radius: 100; color: "white"; opacity: 0.05; x: -50; y: -50 }
+            Rectangle { width: 150; height: 150; radius: 75; color: "white"; opacity: 0.05; x: parent.width - 80; y: 40 }
+
+            // Кнопка назад
+            ToolButton {
+                anchors.top: parent.top; anchors.left: parent.left; anchors.margins: 10
+                contentItem: Text { text: Theme.iconBack; color: "white"; font.pixelSize: 24 }
+                background: Item {}
+                onClicked: profilePage.StackView.view.pop()
+            }
+            // Заголовок
+            Text {
+                text: "Мой профиль"
+                color: "white"; font.bold: true; font.pixelSize: Theme.fontSizeLarge
+                anchors.top: parent.top; anchors.horizontalCenter: parent.horizontalCenter; anchors.topMargin: 15
+            }
+        }
 
         ColumnLayout {
             id: contentColumn
             width: parent.width
-            spacing: Theme.spacingMedium
+            spacing: 0
 
-            // --- КАРТОЧКА ПРОФИЛЯ ---
-            Rectangle {
-                Layout.fillWidth: true
-                height: 130
-                radius: 0
-                gradient: Gradient {
-                    GradientStop { position: 0.0; color: Theme.primary }
-                    GradientStop { position: 1.0; color: Theme.primaryDark }
-                }
+            // 1. АВАТАР
+            Item {
+                Layout.fillWidth: true; Layout.preferredHeight: 140; Layout.topMargin: 80
+                Column {
+                    anchors.centerIn: parent
+                    spacing: 8
 
-                RowLayout {
-                    anchors.fill: parent
-                    anchors.margins: Theme.spacingLarge
-                    spacing: Theme.spacingMedium
-
+                    // Круг аватара
                     Rectangle {
-                        Layout.preferredWidth: 64
-                        Layout.preferredHeight: 64
-                        radius: 32
-                        color: "white"
-                        opacity: 0.95
-                        Text {
-                            text: "👤"
-                            font.pixelSize: 32
-                            anchors.centerIn: parent
-                        }
+                        width: 100; height: 100; radius: 50; color: Theme.surface
+                        border.color: Theme.surface; border.width: 4
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        layer.enabled: true
+                        layer.effect: MultiEffect { shadowEnabled: true; shadowColor: "#40000000"; shadowBlur: 16; shadowVerticalOffset: 4 }
+
+                        Text { text: Theme.iconPerson; font.pixelSize: 50; anchors.centerIn: parent; color: Theme.primary }
                     }
 
-                    ColumnLayout {
-                        Layout.fillWidth: true
-                        spacing: 2
-
-                        Text {
-                            text: userName
-                            color: "white"
-                            font.bold: true
-                            font.pixelSize: 20
-                        }
-
-                        Row {
-                            spacing: 6
-                            Rectangle {
-                                color: "white"
-                                radius: 4
-                                opacity: 0.25
-                                width: roleLabel.width + 12
-                                height: 20
-                                Text {
-                                    id: roleLabel
-                                    text: userRole === "superadmin" ? "👑 Основатель" : (userRole === "admin" ? "Админ" : "Гость")
-                                    color: "white"
-                                    font.pixelSize: 11
-                                    font.bold: true
-                                    anchors.centerIn: parent
-                                }
-                            }
-                            Text {
-                                text: "ID: " + BackendApi.currentUserId
-                                color: "#E0E0E0"
-                                font.pixelSize: 12
-                                anchors.verticalCenter: parent.verticalCenter
-                            }
-                        }
-                    }
-                }
-            }
-
-            // --- СПИСОК БРОНИРОВАНИЙ ---
-            ColumnLayout {
-                Layout.fillWidth: true
-                Layout.leftMargin: Theme.spacingMedium
-                Layout.rightMargin: Theme.spacingMedium
-                spacing: Theme.spacingSmall
-
-                Text {
-                    text: "Мои бронирования"
-                    font.bold: true
-                    font.pixelSize: Theme.fontSizeLarge
-                    color: Theme.textPrimary
-                    Layout.topMargin: 8
-                    Layout.bottomMargin: 8
-                }
-
-                Repeater {
-                    model: userBookings
-                    delegate: Card {
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: 90 // Компактная высота
-
-                        content: RowLayout {
-                            anchors.fill: parent
-                            spacing: Theme.spacingMedium
-
-                            // 1. БЛОК ДАТЫ (Слева)
-                            Rectangle {
-                                Layout.preferredWidth: 56
-                                Layout.fillHeight: true
-                                radius: Theme.radiusMedium
-                                color: Qt.alpha(Theme.primary, 0.1) // Прозрачный синий фон
-
-                                Column {
-                                    anchors.centerIn: parent
-                                    spacing: -2 // Чуть сближаем
-
-                                    Text {
-                                        text: getDay(modelData.startTime)
-                                        font.bold: true
-                                        font.pixelSize: 22
-                                        color: Theme.primary
-                                        anchors.horizontalCenter: parent.horizontalCenter
-                                    }
-                                    Text {
-                                        text: getMonth(modelData.startTime)
-                                        font.pixelSize: 12
-                                        font.weight: Font.DemiBold
-                                        color: Theme.primary
-                                        anchors.horizontalCenter: parent.horizontalCenter
-                                    }
-                                }
-                            }
-
-                            // 2. ИНФОРМАЦИЯ (Центр)
-                            ColumnLayout {
-                                Layout.fillWidth: true
-                                Layout.alignment: Qt.AlignVCenter
-                                spacing: 4
-
-                                Text {
-                                    text: modelData.premisesName
-                                    font.bold: true
-                                    font.pixelSize: 16
-                                    color: Theme.textPrimary
-                                    elide: Text.ElideRight
-                                    Layout.fillWidth: true
-                                }
-
-                                RowLayout {
-                                    spacing: 12
-
-                                    // Время
-                                    Row {
-                                        spacing: 4
-                                        Text { text: "🕒"; font.pixelSize: 12 }
-                                        Text {
-                                            text: getTime(modelData.startTime) + " - " + getTime(modelData.endTime)
-                                            color: Theme.textPrimary
-                                            font.bold: true
-                                            font.pixelSize: 13
-                                        }
-                                    }
-
-                                    // Стол
-                                    Row {
-                                        spacing: 4
-                                        Text { text: "🪑"; font.pixelSize: 12 }
-                                        Text {
-                                            text: modelData.tableName
-                                            color: Theme.textSecondary
-                                            font.pixelSize: 13
-                                        }
-                                    }
-                                }
-                            }
-
-                            // 3. КНОПКА ОТМЕНЫ (Круглая справа)
-                            Rectangle {
-                                Layout.preferredWidth: 36
-                                Layout.preferredHeight: 36
-                                radius: 18
-                                color: cancelMouseArea.pressed ? "#FFEBEE" : "transparent"
-                                border.color: Theme.error
-                                border.width: 1
-                                Layout.alignment: Qt.AlignVCenter
-
-                                Text {
-                                    text: "✕"
-                                    color: Theme.error
-                                    font.pixelSize: 14
-                                    font.bold: true
-                                    anchors.centerIn: parent // Идеальный центр
-                                    anchors.verticalCenterOffset: -1 // Микро-коррекция для шрифта
-                                }
-
-                                MouseArea {
-                                    id: cancelMouseArea
-                                    anchors.fill: parent
-                                    onClicked: cancelBooking(modelData.id)
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // Заглушка (если нет броней)
-                Item {
-                    Layout.fillWidth: true
-                    height: 120
-                    visible: userBookings.length === 0
-
+                    // Текст под аватаром
                     Column {
-                        anchors.centerIn: parent
-                        spacing: 8
+                        spacing: 4
+                        anchors.horizontalCenter: parent.horizontalCenter
                         Text {
-                            text: "📅"
-                            font.pixelSize: 48
+                            text: "Пользователь #" + userId
+                            font.bold: true; font.pixelSize: Theme.fontSizeXLarge; color: Theme.textPrimary
                             anchors.horizontalCenter: parent.horizontalCenter
-                            opacity: 0.3
                         }
-                        Text {
-                            text: "У вас пока нет активных бронирований"
-                            color: Theme.textHint
-                            font.pixelSize: Theme.fontSizeMedium
+                        // Роль
+                        Rectangle {
+                            height: 24
+                            width: roleText.implicitWidth + 24
+                            radius: 12
+                            color: userRole === "superadmin" ? Theme.primary : (userRole === "admin" ? Theme.primaryLight : "#E0E0E0")
+                            anchors.horizontalCenter: parent.horizontalCenter
+
+                            Text {
+                                id: roleText
+                                text: userRole === "superadmin" ? "Создатель" : (userRole === "admin" ? "Администратор" : "Гость")
+                                color: userRole === "superadmin" ? "white" : (userRole === "admin" ? "white" : Theme.textSecondary)
+                                font.pixelSize: Theme.fontSizeSmall; font.bold: true
+                                anchors.centerIn: parent
+                            }
                         }
                     }
                 }
             }
 
-            // --- НИЖНЕЕ МЕНЮ ---
+            // 2. МЕНЮ (Текст теперь будет виден!)
             ColumnLayout {
                 Layout.fillWidth: true
-                Layout.margins: Theme.spacingMedium
-                Layout.topMargin: 20
+                Layout.preferredWidth: Math.min(parent.width * 0.9, 400)
+                Layout.alignment: Qt.AlignHCenter
+                Layout.topMargin: 30
                 spacing: Theme.spacingMedium
 
-                ColumnLayout {
-                    visible: userRole === "admin" || userRole === "superadmin"
+                Rectangle {
                     Layout.fillWidth: true
-                    spacing: Theme.spacingMedium
+                    height: menuColumn.implicitHeight + 20
+                    color: Theme.surface
+                    radius: Theme.radiusLarge
+                    layer.enabled: true
+                    layer.effect: MultiEffect { shadowEnabled: true; shadowColor: "#10000000"; shadowBlur: 20; shadowVerticalOffset: 5 }
 
-                    Text { text: "Управление"; font.bold: true; color: Theme.textSecondary; font.pixelSize: 12 }
+                    ColumnLayout {
+                        id: menuColumn
+                        anchors.fill: parent; anchors.margins: 10; spacing: 0
 
-                    MaterialButton {
-                        text: "Мои заведения"
-                        iconText: Theme.iconRestaurant
-                        isPrimary: false
-                        Layout.fillWidth: true
-                        onClicked: profilePage.StackView.view.push("../admin/AdminDashboardPage.qml")
-                    }
+                        // Пункты меню
+                        ProfileMenuItem {
+                            icon: Theme.iconCalendar
+                            text: "Мои бронирования"
+                            onClicked: { loadBookings(); bookingsDialog.open() }
+                        }
 
-                    MaterialButton {
-                        visible: userRole === "superadmin"
-                        text: "Пользователи"
-                        iconText: "👥"
-                        isPrimary: false
-                        Layout.fillWidth: true
-                        onClicked: profilePage.StackView.view.push("../admin/UserManagementPage.qml")
+                        Rectangle { Layout.fillWidth: true; height: 1; color: Theme.divider; Layout.leftMargin: 50 }
+
+                        ProfileMenuItem {
+                            visible: userRole === "superadmin"
+                            icon: Theme.iconPerson
+                            text: "Управление пользователями"
+                            onClicked: profilePage.StackView.view.push("../admin/UserManagementPage.qml")
+                        }
+
+                        Rectangle { Layout.fillWidth: true; height: 1; color: Theme.divider; visible: userRole === "superadmin"; Layout.leftMargin: 50 }
+
+                        ProfileMenuItem {
+                            visible: userRole === "admin" || userRole === "superadmin"
+                            icon: Theme.iconRestaurant
+                            text: "Управление заведениями"
+                            onClicked: profilePage.StackView.view.push("../admin/AdminDashboardPage.qml")
+                        }
+
+                        Rectangle { Layout.fillWidth: true; height: 1; color: Theme.divider; visible: userRole === "admin" || userRole === "superadmin"; Layout.leftMargin: 50 }
+
+                        ProfileMenuItem {
+                            icon: Theme.iconInfo
+                            text: "О приложении"
+                            onClicked: profilePage.StackView.view.push("../AboutPage.qml")
+                        }
                     }
                 }
 
-                Text { text: "Приложение"; font.bold: true; color: Theme.textSecondary; font.pixelSize: 12; Layout.topMargin: 8 }
-
-                MaterialButton {
-                    text: "О программе"
-                    iconText: Theme.iconInfo
-                    isPrimary: false
-                    Layout.fillWidth: true
-                    onClicked: profilePage.StackView.view.push("../AboutPage.qml")
+                Text {
+                    text: "v1.0.0"
+                    color: Theme.textHint
+                    font.pixelSize: Theme.fontSizeSmall
+                    Layout.alignment: Qt.AlignHCenter
+                    Layout.topMargin: 10
                 }
+            }
+        }
+    }
 
-                MaterialButton {
-                    text: "Выйти"
-                    iconText: Theme.iconLogout
-                    isFlat: true
-                    Layout.fillWidth: true
-                    onClicked: {
-                        BackendApi.logout()
-                        var stack = profilePage.StackView.view
-                        stack.clear()
-                        stack.push("../LoginScreen.qml")
+    // --- НИЖНЯЯ ПАНЕЛЬ (Кнопка Выйти) ---
+    Rectangle {
+        id: bottomPanel
+        anchors.bottom: parent.bottom
+        anchors.left: parent.left
+        anchors.right: parent.right
+        height: 80
+        color: Theme.surface
+
+        // Линия разделитель
+        Rectangle {
+            anchors.top: parent.top; anchors.left: parent.left; anchors.right: parent.right
+            height: 1; color: Theme.divider
+        }
+
+        Button {
+            anchors.centerIn: parent
+            width: Math.min(parent.width * 0.8, 300)
+            height: 48
+
+            background: Rectangle {
+                color: parent.pressed ? "#FFEBEE" : "transparent"
+                radius: 24
+                border.color: Theme.error
+                border.width: 1
+            }
+
+            contentItem: Text {
+                text: "Выйти"
+                color: Theme.error
+                font.bold: true
+                font.pixelSize: Theme.fontSizeMedium
+                horizontalAlignment: Text.AlignHCenter
+                verticalAlignment: Text.AlignVCenter
+            }
+
+            onClicked: {
+                BackendApi.logout()
+                profilePage.StackView.view.clear()
+                profilePage.StackView.view.push("../LoginScreen.qml")
+            }
+        }
+    }
+
+    // --- ДИАЛОГ МОИ БРОНИРОВАНИЯ ---
+    Dialog {
+        id: bookingsDialog
+        x: (parent.width - width) / 2
+        y: (parent.height - height) / 2
+        width: Math.min(parent.width * 0.9, 400)
+        height: Math.min(parent.height * 0.8, 500)
+        modal: true
+
+        background: Rectangle { color: Theme.surface; radius: Theme.radiusLarge }
+
+        header: ColumnLayout {
+            spacing: 0
+            Rectangle {
+                Layout.fillWidth: true; height: 60; color: "transparent"
+                Text { text: "Мои бронирования"; font.bold: true; font.pixelSize: Theme.fontSizeLarge; color: Theme.textPrimary; anchors.centerIn: parent }
+                ToolButton { anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; text: "✕"; onClicked: bookingsDialog.close() }
+            }
+            Rectangle { Layout.fillWidth: true; height: 1; color: Theme.divider }
+        }
+
+        contentItem: ListView {
+            clip: true; model: bookingsList; spacing: 12
+
+            Text {
+                visible: bookingsList.length === 0
+                text: "У вас пока нет активных броней"
+                color: Theme.textSecondary
+                anchors.centerIn: parent
+                font.pixelSize: Theme.fontSizeMedium
+            }
+
+            delegate: Rectangle {
+                width: parent ? parent.width : 0
+                height: 90
+                color: Theme.surface
+                radius: Theme.radiusMedium
+                border.color: Theme.divider
+                border.width: 1
+
+                RowLayout {
+                    anchors.fill: parent; anchors.margins: 12; spacing: 12
+                    Rectangle {
+                        Layout.preferredWidth: 50; Layout.preferredHeight: 50; radius: 12; color: Theme.primaryLight; opacity: 0.2
+                        Text { text: Theme.iconCalendar; font.pixelSize: 24; color: Theme.primary; anchors.centerIn: parent }
                     }
-                    contentItem: Text {
-                        text: parent.text
-                        color: Theme.error
-                        font.pixelSize: Theme.fontSizeMedium
-                        font.bold: true
-                        horizontalAlignment: Text.AlignHCenter
-                        verticalAlignment: Text.AlignVCenter
+                    ColumnLayout {
+                        Layout.fillWidth: true; spacing: 2
+                        Text { text: modelData.premisesName; font.bold: true; font.pixelSize: 15; color: Theme.textPrimary }
+                        Text { text: "Стол: " + modelData.tableName; font.pixelSize: 13; color: Theme.textSecondary }
+                        Text {
+                            text: { var dt = modelData.startTime.split(" "); return dt[0] + " в " + dt[1].substring(0, 5) }
+                            font.pixelSize: 13; color: Theme.primary; font.bold: true
+                        }
+                    }
+                    Button {
+                        Layout.preferredWidth: 40; Layout.preferredHeight: 40
+                        background: Rectangle { color: parent.pressed ? "#FFEBEE" : "transparent"; radius: 20 }
+                        contentItem: Text { text: Theme.iconDelete; color: Theme.error; font.pixelSize: 20; anchors.centerIn: parent }
+                        onClicked: cancelBooking(modelData.id)
                     }
                 }
             }
+        }
+    }
+
+    // --- ИСПРАВЛЕННЫЙ КОМПОНЕНТ МЕНЮ ---
+    component ProfileMenuItem : Rectangle {
+        id: menuItemRoot // ВАЖНО: Добавил ID для корня компонента
+        property string icon: ""
+        property string text: ""
+        signal clicked()
+
+        Layout.fillWidth: true
+        Layout.preferredHeight: 56
+        color: "transparent"
+
+        Rectangle {
+            anchors.fill: parent
+            color: mouseArea.pressed ? Theme.surfaceDark : "transparent"
+            radius: Theme.radiusSmall
+        }
+
+        RowLayout {
+            anchors.fill: parent
+            anchors.leftMargin: 10
+            anchors.rightMargin: 10
+            spacing: 15
+
+            Rectangle {
+                width: 36; height: 36; radius: 18; color: Theme.background
+                Text { text: icon; anchors.centerIn: parent; font.pixelSize: 18; color: Theme.textSecondary }
+            }
+
+            // ТЕКСТ: Теперь ссылаемся через ID компонента (menuItemRoot.text)
+            // parent.text НЕ РАБОТАЛ, так как parent здесь это RowLayout
+            Text {
+                text: menuItemRoot.text
+                color: Theme.textPrimary
+                font.pixelSize: Theme.fontSizeMedium
+                Layout.fillWidth: true
+            }
+
+            Text {
+                text: "›"
+                color: Theme.textSecondary
+                font.pixelSize: 24
+                font.bold: true
+            }
+        }
+
+        MouseArea {
+            id: mouseArea
+            anchors.fill: parent
+            onClicked: parent.clicked()
         }
     }
 }

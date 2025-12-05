@@ -1,77 +1,112 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
+import QtQuick.Effects
 import com.tablebooker.api 1.0
 import "../components"
 import "../Theme.js" as Theme
 
 Page {
     id: userPremisesPage
-    title: "Заведения"
-    
+    title: "Куда пойдем?"
+
     background: Rectangle {
         color: Theme.background
     }
 
-    // Модель данных
+    // --- ЛОГИКА ДАННЫХ ---
     property var allPremises: []
     property var filteredPremises: []
     property string searchText: ""
-    property int sortMode: 0 // 0 - по имени, 1 - по имени (обратно)
-
+    property int sortMode: 0
     property bool isAdmin: BackendApi.currentUserRole === "admin"
 
     function loadData() {
         allPremises = BackendApi.getAllPremises()
         applyFilters()
     }
-    
+
     function applyFilters() {
         var filtered = []
-        
-        // Поиск
         for (var i = 0; i < allPremises.length; i++) {
             var premise = allPremises[i]
             if (searchText === "" || premise.name.toLowerCase().indexOf(searchText.toLowerCase()) !== -1) {
                 filtered.push(premise)
             }
         }
-        
-        // Сортировка
         filtered.sort(function(a, b) {
-            if (sortMode === 0) {
-                return a.name.localeCompare(b.name)
-            } else {
-                return b.name.localeCompare(a.name)
-            }
+            return sortMode === 0 ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name)
         })
-        
         filteredPremises = filtered
     }
 
     Component.onCompleted: loadData()
 
+    // --- ВЕРХНЯЯ ПАНЕЛЬ (ОБНОВЛЕННАЯ) ---
     header: ToolBar {
+        background: Rectangle { color: Theme.background }
+        height: 60
+
         RowLayout {
             anchors.fill: parent
-            anchors.leftMargin: 10; anchors.rightMargin: 10
+            anchors.leftMargin: Theme.spacingMedium
+            anchors.rightMargin: Theme.spacingMedium
 
-            // Кнопка Профиля слева
-            ToolButton {
-                text: "👤"
-                font.pixelSize: 18
-                onClicked: userPremisesPage.StackView.view.push("ProfilePage.qml")
+            // 1. СЛЕВА: Пустой слот (для балансировки заголовка)
+            Item {
+                width: 40
+                height: 40
             }
 
-            Label {
-                text: userPremisesPage.title
-                font.bold: true
+            // 2. ЦЕНТР: Заголовок
+            Column {
                 Layout.fillWidth: true
-                horizontalAlignment: Qt.AlignHCenter
+                spacing: 0
+                Label {
+                    text: "TableBooker"
+                    font.pixelSize: 12
+                    color: Theme.textSecondary
+                    anchors.horizontalCenter: parent.horizontalCenter
+                }
+                Label {
+                    text: "Выбор заведения"
+                    font.bold: true
+                    font.pixelSize: Theme.fontSizeLarge
+                    color: Theme.textPrimary
+                    anchors.horizontalCenter: parent.horizontalCenter
+                }
             }
 
-            // Справа пусто или кнопка "О программе" (можно убрать, т.к. она теперь в профиле)
-            Item { width: 40 }
+            // 3. СПРАВА: Кнопка профиля
+            Rectangle {
+                width: 40
+                height: 40
+                radius: 20
+                color: Theme.surface
+                border.color: Theme.divider
+                border.width: 1
+
+                // Тень для кнопки профиля
+                layer.enabled: true
+                layer.effect: MultiEffect {
+                    shadowEnabled: true
+                    shadowColor: "#20000000"
+                    shadowBlur: 4
+                    shadowVerticalOffset: 1
+                }
+
+                Text {
+                    text: Theme.iconPerson
+                    anchors.centerIn: parent
+                    font.pixelSize: 20
+                }
+
+                MouseArea {
+                    anchors.fill: parent
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: userPremisesPage.StackView.view.push("ProfilePage.qml")
+                }
+            }
         }
     }
 
@@ -79,209 +114,240 @@ Page {
         anchors.fill: parent
         spacing: 0
 
-        // Поиск и сортировка
+        // --- БЛОК ПОИСКА ---
         Rectangle {
             Layout.fillWidth: true
-            Layout.topMargin: 16
-            Layout.leftMargin: 16
-            Layout.rightMargin: 16
-            Layout.bottomMargin: 8
-            height: 100
+            height: 80
             color: "transparent"
-            
-            Column {
-                anchors.fill: parent
-                spacing: 8
-                
-                // Поле поиска
-                Rectangle {
-                    width: parent.width
-                    height: 48
-                    color: Theme.surface
-                    radius: Theme.radiusSmall
-                    border.color: searchField.activeFocus ? Theme.primary : Theme.divider
-                    border.width: searchField.activeFocus ? 2 : 1
-                    
-                    Row {
-                        anchors.fill: parent
-                        anchors.leftMargin: 16
-                        anchors.rightMargin: 16
-                        spacing: 12
-                        
-                        Text {
-                            text: Theme.iconSearch
-                            font.pixelSize: 20
-                            color: Theme.textSecondary
-                            anchors.verticalCenter: parent.verticalCenter
-                        }
-                        
-                        TextField {
-                            id: searchField
-                            anchors.verticalCenter: parent.verticalCenter
-                            width: parent.width - 40
-                            placeholderText: "Поиск заведений..."
-                            background: Item {}
-                            font.pixelSize: Theme.fontSizeMedium
-                            color: Theme.textPrimary
-                            onTextChanged: {
-                                userPremisesPage.searchText = text
-                                userPremisesPage.applyFilters()
-                            }
-                        }
-                    }
+            z: 10
+
+            Rectangle {
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.verticalCenter: parent.verticalCenter
+                anchors.margins: Theme.spacingMedium
+                height: 50
+                radius: 25
+                color: Theme.surface
+
+                layer.enabled: true
+                layer.effect: MultiEffect {
+                    shadowEnabled: true
+                    shadowColor: "#20000000"
+                    shadowBlur: 10
+                    shadowVerticalOffset: 4
                 }
-                
-                // Кнопка сортировки
-                Row {
-                    spacing: 8
-                    
-                    Button {
-                        text: sortMode === 0 ? "А-Я" : "Я-А"
-                        height: 32
-                        width: 80
-                        background: Rectangle {
-                            color: parent.pressed ? Theme.surfaceDark : Theme.surface
-                            radius: Theme.radiusSmall
-                            border.color: Theme.divider
-                            border.width: 1
-                        }
-                        contentItem: Text {
-                            text: parent.text
-                            color: Theme.textPrimary
-                            font.pixelSize: Theme.fontSizeSmall
-                            horizontalAlignment: Text.AlignHCenter
-                        }
-                        onClicked: {
-                            userPremisesPage.sortMode = userPremisesPage.sortMode === 0 ? 1 : 0
+
+                RowLayout {
+                    anchors.fill: parent
+                    anchors.leftMargin: 16
+                    anchors.rightMargin: 16
+                    spacing: 10
+
+                    Text {
+                        text: Theme.iconSearch
+                        font.pixelSize: 20
+                        color: Theme.primary
+                    }
+
+                    TextField {
+                        id: searchField
+                        Layout.fillWidth: true
+                        placeholderText: "Название ресторана..."
+                        background: Item {}
+                        font.pixelSize: Theme.fontSizeMedium
+                        color: Theme.textPrimary
+                        onTextChanged: {
+                            userPremisesPage.searchText = text
                             userPremisesPage.applyFilters()
                         }
                     }
-                    
+
                     Text {
-                        text: "Найдено: " + filteredPremises.length
-                        font.pixelSize: Theme.fontSizeSmall
+                        text: "✕"
+                        visible: searchField.text.length > 0
                         color: Theme.textSecondary
-                        anchors.verticalCenter: parent.verticalCenter
+                        font.pixelSize: 18
+                        MouseArea {
+                            anchors.fill: parent
+                            onClicked: {
+                                searchField.text = ""
+                                userPremisesPage.searchText = ""
+                            }
+                        }
                     }
                 }
             }
         }
 
-        // Список заведений
+        // --- СПИСОК ЗАВЕДЕНИЙ ---
         ListView {
             id: listView
             Layout.fillWidth: true
             Layout.fillHeight: true
             clip: true
             model: filteredPremises
-            spacing: 12
-            
-            delegate: Rectangle {
-                width: listView.width - Theme.spacingMedium * 2
-                height: 140
-                x: Theme.spacingMedium
-                color: Theme.surface
-                radius: Theme.radiusMedium
-                border.color: Theme.divider
-                border.width: 1
-                
-                // Профессиональная тень
+            spacing: 20
+
+            header: Item { height: 10 }
+            footer: Item { height: 20 }
+
+            delegate: Item {
+                width: listView.width
+                height: 240
+
                 Rectangle {
                     anchors.fill: parent
-                    anchors.margins: -3
-                    z: -1
-                    color: "#0D000000"
-                    radius: parent.radius + 3
-                    opacity: 0.15
-                }
-                Rectangle {
-                    anchors.fill: parent
-                    anchors.margins: -1
-                    z: -1
-                    color: "#1A000000"
-                    radius: parent.radius + 1
-                    opacity: 0.08
-                }
-                
-                RowLayout {
-                    anchors.fill: parent
-                    anchors.margins: Theme.spacingMedium
-                    spacing: Theme.spacingMedium
-                    
-                    // Иконка заведения
-                    Rectangle {
-                        Layout.preferredWidth: 80
-                        Layout.preferredHeight: 80
-                        radius: Theme.radiusMedium
-                        color: Theme.primary
-                        opacity: 0.9
-                        
-                        Text {
-                            text: Theme.iconRestaurant
-                            font.pixelSize: 36
-                            anchors.centerIn: parent
-                        }
-                        
-                        // Градиент для глубины
+                    anchors.leftMargin: Theme.spacingMedium
+                    anchors.rightMargin: Theme.spacingMedium
+                    radius: Theme.radiusLarge
+                    color: Theme.surface
+
+                    layer.enabled: true
+                    layer.effect: MultiEffect {
+                        shadowEnabled: true
+                        shadowColor: "#15000000"
+                        shadowBlur: 12
+                        shadowVerticalOffset: 2
+                    }
+
+                    ColumnLayout {
+                        anchors.fill: parent
+                        spacing: 0
+
+                        // Обложка
                         Rectangle {
-                            anchors.fill: parent
-                            radius: parent.radius
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 140
+                            radius: Theme.radiusLarge
+
+                            // Скрываем скругление снизу
+                            Rectangle {
+                                anchors.bottom: parent.bottom
+                                height: 10
+                                width: parent.width
+                                color: parent.color
+                            }
+
                             gradient: Gradient {
-                                GradientStop { position: 0.0; color: "#00000000" }
-                                GradientStop { position: 1.0; color: "#20000000" }
+                                GradientStop { position: 0.0; color: getGradientColor(modelData.id, 0) }
+                                GradientStop { position: 1.0; color: getGradientColor(modelData.id, 1) }
+                            }
+
+                            Text {
+                                text: Theme.iconRestaurant
+                                font.pixelSize: 48
+                                anchors.centerIn: parent
+                                color: "#FFFFFF"
+                                style: Text.Raised
+                                styleColor: "#20000000"
+                            }
+
+                            Rectangle {
+                                anchors.top: parent.top
+                                anchors.right: parent.right
+                                anchors.margins: 12
+                                width: 70
+                                height: 24
+                                radius: 12
+                                color: "#CCFFFFFF"
+
+                                Row {
+                                    anchors.centerIn: parent
+                                    spacing: 4
+                                    Text { text: "●"; color: Theme.success; font.pixelSize: 10 }
+                                    Text { text: "Open"; color: Theme.success; font.bold: true; font.pixelSize: 10 }
+                                }
+                            }
+                        }
+
+                        // Информация
+                        Item {
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+
+                            RowLayout {
+                                anchors.fill: parent
+                                anchors.margins: 12
+
+                                ColumnLayout {
+                                    Layout.fillWidth: true
+                                    spacing: 4
+
+                                    Text {
+                                        text: modelData.name
+                                        font.bold: true
+                                        font.pixelSize: Theme.fontSizeLarge
+                                        color: Theme.textPrimary
+                                        elide: Text.ElideRight
+                                        Layout.fillWidth: true
+                                    }
+
+                                    Text {
+                                        text: "Европейская кухня • $$"
+                                        color: Theme.textSecondary
+                                        font.pixelSize: Theme.fontSizeSmall
+                                    }
+                                }
+
+                                Button {
+                                    text: "Забронировать"
+                                    font.bold: true
+                                    font.pixelSize: 13
+
+                                    background: Rectangle {
+                                        color: parent.pressed ? Theme.primaryDark : Theme.surface
+                                        radius: 8
+                                        border.color: Theme.primary
+                                        border.width: 1
+                                    }
+                                    contentItem: Text {
+                                        text: parent.text
+                                        color: parent.pressed ? "white" : Theme.primary
+                                        horizontalAlignment: Text.AlignHCenter
+                                        verticalAlignment: Text.AlignVCenter
+                                    }
+
+                                    onClicked: openBooking(modelData)
+                                }
                             }
                         }
                     }
-                    
-                    // Информация
-                    Column {
-                        Layout.fillWidth: true
-                        spacing: Theme.spacingSmall
-                        
-                        Text {
-                            text: modelData.name
-                            font.pixelSize: Theme.fontSizeLarge
-                            font.bold: true
-                            font.weight: Font.DemiBold
-                            color: Theme.textPrimary
-                        }
-                        
-                        Text {
-                            text: "Нажмите для бронирования"
-                            font.pixelSize: Theme.fontSizeSmall
-                            color: Theme.textSecondary
-                        }
-                    }
-                    
-                    // Стрелка
-                    Text {
-                        text: "→"
-                        font.pixelSize: 20
-                        color: Theme.primary
-                        Layout.alignment: Qt.AlignVCenter
-                    }
-                }
-                
-                MouseArea {
-                    anchors.fill: parent
-                    onClicked: {
-                        console.log("Клиент выбрал кафе ID:", modelData.id)
-                        userPremisesPage.StackView.view.push("BookingHallPage.qml", {
-                            "premisesId": modelData.id,
-                            "premisesName": modelData.name
-                        })
+
+                    MouseArea {
+                        anchors.fill: parent
+                        z: -1
+                        onClicked: openBooking(modelData)
                     }
                 }
             }
 
-            // Пустое состояние
             Text {
                 visible: listView.count === 0
-                text: "Нет доступных заведений"
+                text: "Ничего не найдено 😔"
                 anchors.centerIn: parent
                 color: Theme.textSecondary
-                font.pixelSize: Theme.fontSizeMedium
+                font.pixelSize: Theme.fontSizeLarge
             }
         }
+    }
+
+    function openBooking(data) {
+        userPremisesPage.StackView.view.push("BookingHallPage.qml", {
+            "premisesId": data.id,
+            "premisesName": data.name
+        })
+    }
+
+    function getGradientColor(id, stop) {
+        var colors = [
+            ["#FF9A9E", "#FECFEF"],
+            ["#a18cd1", "#fbc2eb"],
+            ["#84fab0", "#8fd3f4"],
+            ["#fccb90", "#d57eeb"],
+            ["#e0c3fc", "#8ec5fc"]
+        ];
+        var index = id % colors.length;
+        return colors[index][stop];
     }
 }
