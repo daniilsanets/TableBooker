@@ -39,13 +39,13 @@ Page {
         for (var i = 0; i < tables.length; i++) {
             var t = tables[i]
             tablesModel.append({
-                "dbId": t.id, "name": t.name, "x": t.x, "y": t.y,
-                "width": t.width, "height": t.height,
-                "type": t.type || "table",
-                "rotation": t.rotation || 0,
-                "color": t.color || "#81C784",
-                "shapeType": t.shapeType || "rect"
-            })
+                                   "dbId": t.id, "name": t.name, "x": t.x, "y": t.y,
+                                   "width": t.width, "height": t.height,
+                                   "type": t.type || "table",
+                                   "rotation": t.rotation || 0,
+                                   "color": t.color || "#81C784",
+                                   "shapeType": t.shapeType || "rect"
+                               })
         }
         Qt.callLater(function(){
             if (tables.length > 0) hallView.centerOnObjects()
@@ -57,11 +57,11 @@ Page {
         for (var i = 0; i < tablesModel.count; i++) {
             var t = tablesModel.get(i)
             tablesToSave.push({
-                "id": t.dbId, "name": t.name, "x": t.x, "y": t.y,
-                "width": t.width, "height": t.height,
-                "type": t.type, "rotation": t.rotation,
-                "color": t.color, "shapeType": t.shapeType
-            })
+                                  "id": t.dbId, "name": t.name, "x": t.x, "y": t.y,
+                                  "width": t.width, "height": t.height,
+                                  "type": t.type, "rotation": t.rotation,
+                                  "color": t.color, "shapeType": t.shapeType
+                              })
         }
         var success = BackendApi.saveTableLayout(premisesId, tablesToSave)
         if (success) {
@@ -91,12 +91,12 @@ Page {
         var center = hallView.viewportCenter()
 
         tablesModel.append({
-            "dbId": -1, "name": newName,
-            "x": center.x - w/2, "y": center.y - h/2,
-            "width": w, "height": h,
-            "rotation": 0, "type": itemType,
-            "shapeType": shape, "color": col
-        })
+                               "dbId": -1, "name": newName,
+                               "x": center.x - w/2, "y": center.y - h/2,
+                               "width": w, "height": h,
+                               "rotation": 0, "type": itemType,
+                               "shapeType": shape, "color": col
+                           })
 
         selectedIndex = tablesModel.count - 1
         scheduleSave()
@@ -106,12 +106,12 @@ Page {
         var item = getSelectedItem()
         if (!item) return
         tablesModel.append({
-            "dbId": -1, "name": item.name + " (копия)",
-            "x": item.x + 30, "y": item.y + 30,
-            "width": item.width, "height": item.height,
-            "rotation": item.rotation, "type": item.type,
-            "shapeType": item.shapeType, "color": item.color
-        })
+                               "dbId": -1, "name": item.name + " (копия)",
+                               "x": item.x + 30, "y": item.y + 30,
+                               "width": item.width, "height": item.height,
+                               "rotation": item.rotation, "type": item.type,
+                               "shapeType": item.shapeType, "color": item.color
+                           })
         selectedIndex = tablesModel.count - 1
         scheduleSave()
     }
@@ -196,9 +196,9 @@ Page {
         selectedIndex: page.selectedIndex
 
         onTableClicked: (idx, dbId) => {
-            page.selectedIndex = idx
-            addDrawer.close()
-        }
+                            page.selectedIndex = idx
+                            addDrawer.close()
+                        }
 
         onCanvasTapped: { page.selectedIndex = -1 }
         onTableModified: scheduleSave()
