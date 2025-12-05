@@ -224,8 +224,12 @@ Page {
 
             onClicked: {
                 BackendApi.logout()
-                profilePage.StackView.view.clear()
-                profilePage.StackView.view.push("../LoginScreen.qml")
+                var stack = profilePage.StackView.view
+                if (stack) {
+                    stack.replace(null, "../LoginScreen.qml")
+                    stack.clear()
+                    stack.push("../LoginScreen.qml")
+                }
             }
         }
     }
